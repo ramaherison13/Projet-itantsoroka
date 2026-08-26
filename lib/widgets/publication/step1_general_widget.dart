@@ -1,17 +1,49 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../../services/territory_service.dart';
 
-// Services factices ou à remplacer par vos propres services API
 Future<List<Map<String, dynamic>>> getThemes() async {
-  // TODO: Remplacer par votre appel API réel
+  try {
+    final response = await http
+        .get(Uri.parse('https://gateway.tsirylab.com/servicepublication/events/themes'))
+        .timeout(const Duration(seconds: 5));
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+      List list = (decoded is List) ? decoded : (decoded['data'] is List ? decoded['data'] : []);
+      if (list.isNotEmpty) {
+        return list.map<Map<String, dynamic>>((t) {
+          if (t is Map<String, dynamic>) return t;
+          return {'id': t.toString(), 'name': t.toString()};
+        }).toList();
+      }
+    }
+  } catch (e) {
+    debugPrint("Erreur getThemes API: $e");
+  }
   return [
     {'id': '1', 'name': 'Environnement'},
     {'id': '2', 'name': 'Éducation'},
     {'id': '3', 'name': 'Santé'},
+    {'id': '4', 'name': 'Infrastructures'},
+    {'id': '5', 'name': 'Agriculture'},
+    {'id': '6', 'name': 'Gouvernance'},
   ];
 }
 
 Future<List<Map<String, dynamic>>> getCommunes() async {
-  // TODO: Remplacer par votre appel API réel
+  try {
+    final list = await TerritoryService.getCommunesBasic();
+    if (list != null && list.isNotEmpty) {
+      return list.map<Map<String, dynamic>>((c) {
+        final id = c['formatted_id']?.toString() ?? c['id']?.toString() ?? '';
+        final name = c['commune_name'] ?? c['name'] ?? c['nom'] ?? '';
+        return {'formatted_id': id, 'name': name};
+      }).toList();
+    }
+  } catch (e) {
+    debugPrint("Erreur getCommunes API: $e");
+  }
   return [
     {'formatted_id': 'c1', 'name': 'Antananarivo Renivohitra'},
     {'formatted_id': 'c2', 'name': 'Toamasina I'},

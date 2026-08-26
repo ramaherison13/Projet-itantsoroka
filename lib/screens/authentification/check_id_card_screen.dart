@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:itantsoroka/constants/api_constants.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
+import 'package:itantsoroka/widgets/language_setting_widget.dart';
 
 // Modèle Citizen - correspond aux champs retournés par servicecitoyen
 class Citizen {
@@ -114,30 +116,6 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String t(String key) {
-      final Map<String, String> translations = {
-        "creer_votre_compte": "Créer votre compte",
-        "dd": "Digital",
-        "enregistre_vous": "Enregistrez-vous dès maintenant",
-        "verific_ident": "Vérification d'identité",
-        "veuil_saisi_num": "Veuillez saisir votre numéro de CIN",
-        "pour_com_insc": "Pour commencer votre inscription, veuillez renseigner votre numéro de carte d'identité.",
-        "num_carte_ident": "Numéro de carte d'identité",
-        "num_contenir_12chiffr": "Le numéro doit contenir 12 chiffres",
-        "Retour": "Retour",
-        "continue": "Continuer",
-        "CIN_nontrouve": "CIN non trouvé",
-        "votre_num_pas_trouve": "Votre numéro n'a pas été trouvé",
-        "num_cin_nontrouve_systeme": "Ce numéro de CIN n'est pas répertorié dans le système.",
-        "vous_pouvez_acce_inscr_comp": "Vous pouvez accéder à l'inscription complète directement.",
-        "proced_inscr_complet": "Procéder à l'inscription complète",
-        "ressayer_autre_num": "Réessayer un autre numéro",
-        "bienvenue": "Bienvenue",
-        "inform_retrouve": "Informations retrouvées avec succès.",
-        "continuer_inscri": "Continuer l'inscription",
-      };
-      return translations[key] ?? key;
-    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
@@ -170,6 +148,13 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: const [
+                            LanguageSettingWidget(),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         if (!isWide) ...[
                           Center(
                             child: Image.asset(
@@ -243,20 +228,20 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
 
                         // Étape 1 : Saisie CIN
                         if (step == "initial") ...[
-                          const Text(
-                            "Vérification d'identité",
+                          Text(
+                            context.tr('register.verific_ident'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            "Veuillez saisir votre numéro de carte d'identité nationale",
+                            context.tr('register.veuil_saisi_num'),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            "Pour commencer l'inscription, nous devons vérifier si vous êtes déjà enregistré dans notre système.",
+                            context.tr('register.pour_com_insc'),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                           ),
@@ -303,7 +288,7 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                                     maxLength: 12,
                                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)),
                                     decoration: InputDecoration(
-                                      hintText: "Numéro de carte d'identité nationale",
+                                      hintText: context.tr('register.cin_hint'),
                                       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                                       border: InputBorder.none,
                                       counterText: "",
@@ -318,7 +303,7 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                             Padding(
                               padding: const EdgeInsets.only(top: 8, left: 4),
                               child: Text(
-                                t("num_contenir_12chiffr"),
+                                context.tr('register.err_cin_12_chiffres'),
                                 style: const TextStyle(color: Colors.red, fontSize: 12),
                               ),
                             ),
@@ -337,7 +322,7 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                                   ),
                                   onPressed: _handleBackClick,
                                   icon: const Icon(Icons.arrow_back, size: 18),
-                                  label: const Text("Retour", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  label: Text(context.tr('register.btn_retour'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -372,10 +357,10 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                                           )
                                         : Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
-                                            children: const [
-                                              Text("Continuer", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                              SizedBox(width: 6),
-                                              Icon(Icons.arrow_forward, size: 18),
+                                            children: [
+                                              Text(context.tr('register.btn_continuer'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                              const SizedBox(width: 6),
+                                              const Icon(Icons.arrow_forward, size: 18),
                                             ],
                                           ),
                                   ),
@@ -387,14 +372,14 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
 
                         // Étape 2 : CIN non trouvé
                         else if (step == "not-found") ...[
-                          const Text(
-                            "CIN non trouvé",
+                          Text(
+                            context.tr('register.cin_nontrouve'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            "Votre numéro n'a pas été trouvé dans notre système",
+                            context.tr('register.votre_num_pas_trouve'),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                           ),
@@ -409,17 +394,17 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Text(
-                                  "Numéro de carte d'identité non trouvé dans notre système.",
+                                  context.tr('register.num_cin_nontrouve_systeme'),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: Color(0xFF854D0E), fontWeight: FontWeight.w600, fontSize: 13.5),
+                                  style: const TextStyle(color: Color(0xFF854D0E), fontWeight: FontWeight.w600, fontSize: 13.5),
                                 ),
-                                SizedBox(height: 6),
+                                const SizedBox(height: 6),
                                 Text(
-                                  "Vous pouvez procéder à une inscription complète ou essayer avec un autre numéro.",
+                                  context.tr('register.vous_pouvez_acce_inscr_comp'),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12.5, color: Color(0xFFA16207)),
+                                  style: const TextStyle(fontSize: 12.5, color: Color(0xFFA16207)),
                                 ),
                               ],
                             ),
@@ -453,10 +438,10 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                               },
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Text("Procéder à l'inscription complète", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                  SizedBox(width: 8),
-                                  Icon(Icons.arrow_forward, size: 18),
+                                children: [
+                                  Text(context.tr('register.proced_inscr_complet'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.arrow_forward, size: 18),
                                 ],
                               ),
                             ),
@@ -477,20 +462,20 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                               });
                             },
                             icon: const Icon(Icons.arrow_back, size: 18),
-                            label: const Text("Réessayer avec un autre numéro", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            label: Text(context.tr('register.ressayer_autre_num'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           ),
                         ]
 
                         // Étape 3 : CIN trouvé
                         else if (step == "found" && citizen != null) ...[
                           Text(
-                            "Bienvenue, ${citizen!.citizenName} ${citizen!.citizenLastname}",
+                            "${context.tr('register.bienvenue')}, ${citizen!.citizenName} ${citizen!.citizenLastname}",
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            t("inform_retrouve"),
+                            context.tr('register.inform_retrouve'),
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                           ),
@@ -523,7 +508,7 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(t("continuer_inscri"), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  Text(context.tr('register.continuer_inscri'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                   const SizedBox(width: 8),
                                   const Icon(Icons.arrow_forward, size: 18),
                                 ],
@@ -554,10 +539,10 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text(
-                                  "Créez votre compte",
+                                Text(
+                                  context.tr('register.titre'),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF1F2937),
@@ -575,7 +560,7 @@ class _CheckIDCardScreenState extends State<CheckIDCardScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  "Enregistrez-vous pour accéder à votre espace personnel",
+                                  context.tr('register.enregistre_vous'),
                                   textAlign: TextAlign.center,
                                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                                 ),

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:itantsoroka/constants/api_constants.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,12 +45,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || !email.contains('@')) {
-      _showAlert("Veuillez entrer une adresse email valide", Colors.red);
+      _showAlert(context.tr('login.email_invalide'), Colors.red);
       return;
     }
 
     if (password.isEmpty) {
-      _showAlert("Veuillez entrer votre mot de passe", Colors.red);
+      _showAlert(context.tr('login.pass_vide'), Colors.red);
       return;
     }
 
@@ -58,6 +59,11 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     bool isRedirecting = false;
+
+    // Capture translations before async operations
+    final msgEmailInvalide = context.tr('login.email_invalide');
+    final msgBtnConnexion = context.tr('login.btn_connexion');
+    final msgErreurGenerique = context.tr('login.erreur_generique');
 
     try {
       final response = await http.post(
@@ -87,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await prefs.setString("access_token", accessToken.toString());
           await prefs.setBool("isActivated", data['isActivated'] ?? true);
 
-          _showAlert(data['message'] ?? "Connexion réussie", Colors.green);
+          _showAlert(data['message'] ?? msgBtnConnexion, Colors.green);
 
           // Vérification des rôles (depuis le body ou en décodant le JWT)
           List roles = [];
@@ -125,13 +131,13 @@ class _LoginScreenState extends State<LoginScreen> {
             }
           }
         } else {
-          _showAlert(data['message'] ?? "Erreur de connexion", Colors.red);
+          _showAlert(data['message'] ?? msgBtnConnexion, Colors.red);
         }
       } else {
-        _showAlert(data['message'] ?? "Identifiants invalides", Colors.red);
+        _showAlert(data['message'] ?? msgEmailInvalide, Colors.red);
       }
     } catch (error) {
-      _showAlert("Une erreur est survenue, veuillez réessayer plus tard.", Colors.red);
+      _showAlert(msgErreurGenerique, Colors.red);
     } finally {
       if (mounted && !isRedirecting) {
         setState(() {
@@ -307,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
 
                 Text(
-                  "Connexion à la plateforme",
+                  context.tr('login.titre'),
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -316,14 +322,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "Veuillez saisir vos identifiants pour accéder à vos fonctionnalités",
+                  context.tr('login.sous_titre'),
                   style: TextStyle(fontSize: 13, color: subtitleColor),
                 ),
                 const SizedBox(height: 28),
 
                 // Champ Email
                 Text(
-                  "Adresse email",
+                  context.tr('login.email_label'),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -336,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   style: TextStyle(fontSize: 14, color: textColor),
                   decoration: InputDecoration(
-                    hintText: "Entrez votre email",
+                    hintText: context.tr('login.email_hint'),
                     hintStyle: TextStyle(color: subtitleColor, fontSize: 13),
                     prefixIcon: const Icon(Icons.email_outlined, size: 20, color: Color(0xFF16A34A)),
                     filled: true,
@@ -360,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Champ Mot de passe
                 Text(
-                  "Mot de passe",
+                  context.tr('login.pass_label'),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -373,7 +379,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: !showPassword,
                   style: TextStyle(fontSize: 14, color: textColor),
                   decoration: InputDecoration(
-                    hintText: "Entrez votre mot de passe",
+                    hintText: context.tr('login.pass_hint'),
                     hintStyle: TextStyle(color: subtitleColor, fontSize: 13),
                     prefixIcon: const Icon(Icons.lock_outline, size: 20, color: Color(0xFF16A34A)),
                     suffixIcon: IconButton(
@@ -421,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          "Rester connecté",
+                          context.tr('login.rester_connecte'),
                           style: TextStyle(fontSize: 13, color: textColor),
                         ),
                       ],
@@ -433,9 +439,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text(
-                        "Mot de passe oublié ?",
-                        style: TextStyle(
+                      child: Text(
+                        context.tr('login.mot_pass_oublie'),
+                        style: const TextStyle(
                           fontSize: 12.5,
                           color: Color(0xFF16A34A),
                           fontWeight: FontWeight.bold,
@@ -465,9 +471,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text(
-                            "Se connecter",
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        : Text(
+                            context.tr('login.btn_connexion'),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),
@@ -481,14 +487,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Vous n'avez pas de compte ? ",
+                            context.tr('login.pas_de_compte'),
                             style: TextStyle(fontSize: 13, color: subtitleColor),
                           ),
+                          const SizedBox(width: 4),
                           GestureDetector(
                             onTap: () => context.go('/auth/check-id-card'),
-                            child: const Text(
-                              "Créer un compte",
-                              style: TextStyle(
+                            child: Text(
+                              context.tr('login.creer_compte'),
+                              style: const TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF16A34A),
                                 fontWeight: FontWeight.bold,
@@ -501,7 +508,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       GestureDetector(
                         onTap: () => context.go('/'),
                         child: Text(
-                          "← Revenir à l'accueil",
+                          context.tr('login.retour_accueil'),
                           style: TextStyle(
                             fontSize: 13,
                             color: subtitleColor,

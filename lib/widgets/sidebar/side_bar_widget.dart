@@ -87,6 +87,11 @@ class SideBarWidgetState extends State<SideBarWidget> {
       'icon': Icons.alt_route_rounded,
       'nameKey': context.tr('admin_navigation'),
     },
+    {
+      'path': '/admin/affiliation',
+      'icon': Icons.link_rounded,
+      'nameKey': context.tr('admin_affiliations'),
+    },
   ];
 
   List<Map<String, dynamic>> _buildAccueilItems() => [

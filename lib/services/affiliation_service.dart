@@ -201,18 +201,47 @@ class AffiliationService {
     'Accept': 'application/json',
   };
 
+  // Cache mémoire
+  static List<dynamic>? _cachedEntites;
+  static List<dynamic>? _cachedStds;
+  static List<dynamic>? _cachedAffiliations;
+  static List<dynamic>? _cachedAffiliationStds;
+  static List<dynamic>? _cachedUserTerritoires;
+  static List<dynamic>? _cachedOffres;
+
+  static void clearCache({
+    bool entites = true,
+    bool stds = true,
+    bool affiliations = true,
+    bool affiliationStds = true,
+    bool userTerritoires = true,
+    bool offres = true,
+  }) {
+    if (entites) _cachedEntites = null;
+    if (stds) _cachedStds = null;
+    if (affiliations) _cachedAffiliations = null;
+    if (affiliationStds) _cachedAffiliationStds = null;
+    if (userTerritoires) _cachedUserTerritoires = null;
+    if (offres) _cachedOffres = null;
+  }
+
   // --- ENTITÉS ---
 
-  static Future<List<dynamic>> listEntites() async {
+  static Future<List<dynamic>> listEntites({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedEntites != null && _cachedEntites!.isNotEmpty) {
+      return _cachedEntites!;
+    }
     try {
       final res = await http.get(Uri.parse('$baseUrl/entites'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return jsonDecode(res.body) as List<dynamic>;
+        final list = jsonDecode(res.body) as List<dynamic>;
+        _cachedEntites = list;
+        return list;
       }
-      return [];
+      return _cachedEntites ?? [];
     } catch (e) {
       debugPrint('AffiliationService.listEntites: $e');
-      return [];
+      return _cachedEntites ?? [];
     }
   }
 
@@ -250,6 +279,7 @@ class AffiliationService {
         body: jsonEncode(payload),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedEntites = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -267,6 +297,7 @@ class AffiliationService {
         body: jsonEncode(payload),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedEntites = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -280,6 +311,7 @@ class AffiliationService {
     try {
       final res = await http.delete(Uri.parse('$baseUrl/entites/$id'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedEntites = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -293,6 +325,7 @@ class AffiliationService {
     try {
       final res = await http.patch(Uri.parse('$baseUrl/entites/$id/disable'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedEntites = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -306,6 +339,7 @@ class AffiliationService {
     try {
       final res = await http.patch(Uri.parse('$baseUrl/entites/$id/enable'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedEntites = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -317,16 +351,21 @@ class AffiliationService {
 
   // --- STDS ---
 
-  static Future<List<dynamic>> listStds() async {
+  static Future<List<dynamic>> listStds({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedStds != null && _cachedStds!.isNotEmpty) {
+      return _cachedStds!;
+    }
     try {
       final res = await http.get(Uri.parse('$baseUrl/stds'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return jsonDecode(res.body) as List<dynamic>;
+        final list = jsonDecode(res.body) as List<dynamic>;
+        _cachedStds = list;
+        return list;
       }
-      return [];
+      return _cachedStds ?? [];
     } catch (e) {
       debugPrint('AffiliationService.listStds: $e');
-      return [];
+      return _cachedStds ?? [];
     }
   }
 
@@ -390,6 +429,7 @@ class AffiliationService {
         body: jsonEncode(payload),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedStds = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -407,6 +447,7 @@ class AffiliationService {
         body: jsonEncode(payload),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedStds = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -420,6 +461,7 @@ class AffiliationService {
     try {
       final res = await http.delete(Uri.parse('$baseUrl/stds/$id'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedStds = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -431,16 +473,21 @@ class AffiliationService {
 
   // --- AFFILIATIONS ---
 
-  static Future<List<dynamic>> listAffiliations() async {
+  static Future<List<dynamic>> listAffiliations({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedAffiliations != null && _cachedAffiliations!.isNotEmpty) {
+      return _cachedAffiliations!;
+    }
     try {
       final res = await http.get(Uri.parse('$baseUrl/affiliations'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return jsonDecode(res.body) as List<dynamic>;
+        final list = jsonDecode(res.body) as List<dynamic>;
+        _cachedAffiliations = list;
+        return list;
       }
-      return [];
+      return _cachedAffiliations ?? [];
     } catch (e) {
       debugPrint('AffiliationService.listAffiliations: $e');
-      return [];
+      return _cachedAffiliations ?? [];
     }
   }
 
@@ -478,6 +525,7 @@ class AffiliationService {
         body: jsonEncode({'userId': userId, 'entiteId': entiteId}),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedAffiliations = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -495,6 +543,7 @@ class AffiliationService {
         body: jsonEncode({'userId': userId, 'entiteId': entiteId}),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedAffiliations = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -508,6 +557,7 @@ class AffiliationService {
     try {
       final res = await http.delete(Uri.parse('$baseUrl/affiliations/$id'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedAffiliations = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -519,16 +569,21 @@ class AffiliationService {
 
   // --- USER-TERRITOIRES ---
 
-  static Future<List<dynamic>> listUserTerritoires() async {
+  static Future<List<dynamic>> listUserTerritoires({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedUserTerritoires != null && _cachedUserTerritoires!.isNotEmpty) {
+      return _cachedUserTerritoires!;
+    }
     try {
       final res = await http.get(Uri.parse('$baseUrl/user-territoires'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return jsonDecode(res.body) as List<dynamic>;
+        final list = jsonDecode(res.body) as List<dynamic>;
+        _cachedUserTerritoires = list;
+        return list;
       }
-      return [];
+      return _cachedUserTerritoires ?? [];
     } catch (e) {
       debugPrint('AffiliationService.listUserTerritoires: $e');
-      return [];
+      return _cachedUserTerritoires ?? [];
     }
   }
 
@@ -553,6 +608,7 @@ class AffiliationService {
         body: jsonEncode({'userId': userId, 'formatted_id': formattedId}),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedUserTerritoires = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -566,6 +622,7 @@ class AffiliationService {
     try {
       final res = await http.delete(Uri.parse('$baseUrl/user-territoires/$id'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedUserTerritoires = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -577,16 +634,21 @@ class AffiliationService {
 
   // --- OFFRES ---
 
-  static Future<List<dynamic>> listOffres() async {
+  static Future<List<dynamic>> listOffres({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedOffres != null && _cachedOffres!.isNotEmpty) {
+      return _cachedOffres!;
+    }
     try {
       final res = await http.get(Uri.parse('$baseUrl/offres'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return jsonDecode(res.body) as List<dynamic>;
+        final list = jsonDecode(res.body) as List<dynamic>;
+        _cachedOffres = list;
+        return list;
       }
-      return [];
+      return _cachedOffres ?? [];
     } catch (e) {
       debugPrint('AffiliationService.listOffres: $e');
-      return [];
+      return _cachedOffres ?? [];
     }
   }
 
@@ -611,6 +673,7 @@ class AffiliationService {
         body: jsonEncode(payload),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedOffres = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -628,6 +691,7 @@ class AffiliationService {
         body: jsonEncode(payload),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedOffres = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -641,6 +705,7 @@ class AffiliationService {
     try {
       final res = await http.delete(Uri.parse('$baseUrl/offres/$id'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedOffres = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -652,16 +717,21 @@ class AffiliationService {
 
   // --- AFFILIATION-STD ---
 
-  static Future<List<dynamic>> listAffiliationStds() async {
+  static Future<List<dynamic>> listAffiliationStds({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedAffiliationStds != null && _cachedAffiliationStds!.isNotEmpty) {
+      return _cachedAffiliationStds!;
+    }
     try {
       final res = await http.get(Uri.parse('$baseUrl/affiliation-std'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return jsonDecode(res.body) as List<dynamic>;
+        final list = jsonDecode(res.body) as List<dynamic>;
+        _cachedAffiliationStds = list;
+        return list;
       }
-      return [];
+      return _cachedAffiliationStds ?? [];
     } catch (e) {
       debugPrint('AffiliationService.listAffiliationStds: $e');
-      return [];
+      return _cachedAffiliationStds ?? [];
     }
   }
 
@@ -673,6 +743,7 @@ class AffiliationService {
         body: jsonEncode({'userId': userId, 'stdId': stdId}),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedAffiliationStds = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);
@@ -699,6 +770,7 @@ class AffiliationService {
     try {
       final res = await http.delete(Uri.parse('$baseUrl/affiliation-std/$id'), headers: headers);
       if (res.statusCode >= 200 && res.statusCode < 300) {
+        _cachedAffiliationStds = null;
         return jsonDecode(res.body);
       }
       throw Exception(res.body);

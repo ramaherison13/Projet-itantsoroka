@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
+import '../../services/entite_service.dart';
 
-// Service factice pour les partenaires (à adapter selon vos services existants)
 Future<List<Map<String, dynamic>>> listEntitesByCategorie(String categorie) async {
-  // TODO: Remplacer par votre appel API réel
+  try {
+    final list = await EntiteService.getEntites();
+    if (list.isNotEmpty) {
+      return list.map<Map<String, dynamic>>((e) {
+        return {
+          'id': e.id,
+          'nom': e.nom,
+          'categorie': e.categorie,
+          'status': e.status,
+        };
+      }).toList();
+    }
+  } catch (e) {
+    debugPrint("Erreur listEntitesByCategorie API: $e");
+  }
   return [
     {'id': 1, 'nom': 'Banque Mondiale'},
     {'id': 2, 'nom': 'UNICEF Madagascar'},
     {'id': 3, 'nom': 'Union Européenne'},
+    {'id': 4, 'nom': 'PNUD Madagascar'},
+    {'id': 5, 'nom': 'AFD - Agence Française de Développement'},
   ];
 }
 

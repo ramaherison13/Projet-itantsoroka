@@ -129,6 +129,8 @@ class _AffiliationPageState extends State<AffiliationPage>
   String _getUserPhone(dynamic u) {
     if (u is! Map) return 'Non renseigné';
     final userMap = u['user'] is Map ? u['user'] : u;
+
+    // L'API retourne un objet plat — citizen directement à la racine
     final citoyenMap = u['citoyen'] is Map
         ? u['citoyen']
         : (u['citizen'] is Map
@@ -145,6 +147,9 @@ class _AffiliationPageState extends State<AffiliationPage>
         citoyenMap?['tel'] ??
         citoyenMap?['contact'] ??
         citoyenMap?['num_tel'] ??
+        // user_phone est aussi retourné à la racine par l'API /serviceauth/users
+        u['user_phone'] ??
+        u['user_telephone'] ??
         userMap['user_phone'] ??
         userMap['user_telephone'] ??
         userMap['user_tel'] ??
@@ -152,9 +157,6 @@ class _AffiliationPageState extends State<AffiliationPage>
         userMap['phone'] ??
         userMap['telephone'] ??
         userMap['tel'] ??
-        userMap['contact'] ??
-        u['user_phone'] ??
-        u['user_telephone'] ??
         u['phone_number'] ??
         u['phone'] ??
         u['telephone'] ??
@@ -170,6 +172,8 @@ class _AffiliationPageState extends State<AffiliationPage>
   String? _getUserPhotoUrl(dynamic u) {
     if (u is! Map) return null;
     final userMap = u['user'] is Map ? u['user'] : u;
+
+    // L'API retourne un objet plat — citizen directement à la racine
     final citoyenMap = u['citoyen'] is Map
         ? u['citoyen']
         : (u['citizen'] is Map
@@ -178,15 +182,17 @@ class _AffiliationPageState extends State<AffiliationPage>
                 ? userMap['citoyen']
                 : (userMap is Map && userMap['citizen'] is Map ? userMap['citizen'] : null)));
 
+    // citizen_photo peut être dans citoyen ou directement dans la racine
     final photo = citoyenMap?['citizen_photo'] ??
         citoyenMap?['photo'] ??
         citoyenMap?['photo_url'] ??
         citoyenMap?['avatar'] ??
+        u['citizen_photo'] ??
+        userMap['citizen_photo'] ??
         userMap['user_photo'] ??
         userMap['photo'] ??
         userMap['photo_url'] ??
         userMap['avatar'] ??
-        u['citizen_photo'] ??
         u['user_photo'] ??
         u['photo'] ??
         u['photo_url'] ??
@@ -205,13 +211,53 @@ class _AffiliationPageState extends State<AffiliationPage>
         ? name.trim().split(RegExp(r'\s+')).take(2).map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').join()
         : 'U';
 
-    if (photoUrl != null && photoUrl.isNotEmpty) {
-      return CircleAvatar(
-        radius: size / 2,
-        backgroundColor: AdminTheme.primary.withValues(alpha: 0.15),
-        backgroundImage: NetworkImage(photoUrl),
-        onBackgroundImageError: (exception, stackTrace) {},
-        child: null,
+    final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+    if (hasPhoto) {
+      return ClipOval(
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Image.network(
+            photoUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('[avatar] Erreur chargement photo: $photoUrl -> $error');
+              return CircleAvatar(
+                radius: size / 2,
+                backgroundColor: AdminTheme.primary.withValues(alpha: 0.15),
+                child: Text(
+                  initials,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: size * 0.38,
+                    color: AdminTheme.primary,
+                  ),
+                ),
+              );
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return CircleAvatar(
+                radius: size / 2,
+                backgroundColor: AdminTheme.primary.withValues(alpha: 0.1),
+                child: SizedBox(
+                  width: size * 0.45,
+                  height: size * 0.45,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AdminTheme.primary,
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       );
     }
 
@@ -229,41 +275,44 @@ class _AffiliationPageState extends State<AffiliationPage>
     );
   }
 
-  Future<void> _loadInitialData() async {
+  Future<void> _loadInitialData({bool forceRefresh = false}) async {
     setState(() => _loading = true);
     try {
+      if (forceRefresh) {
+        AffiliationService.clearCache();
+      }
       final results = await Future.wait([
         UserService.getAllUsersByApplicationRole().catchError((e) {
           debugPrint('Erreur getAllUsersByApplicationRole: $e');
           return null;
         }),
-        AffiliationService.listEntites().catchError((e) {
+        AffiliationService.listEntites(forceRefresh: forceRefresh).catchError((e) {
           debugPrint('Erreur listEntites: $e');
           return [];
         }),
-        AffiliationService.listStds().catchError((e) {
+        AffiliationService.listStds(forceRefresh: forceRefresh).catchError((e) {
           debugPrint('Erreur listStds: $e');
           return [];
         }),
-        AffiliationService.listAffiliations().catchError((e) {
+        AffiliationService.listAffiliations(forceRefresh: forceRefresh).catchError((e) {
           debugPrint('Erreur listAffiliations: $e');
           return [];
         }),
-        AffiliationService.listAffiliationStds().catchError((e) {
+        AffiliationService.listAffiliationStds(forceRefresh: forceRefresh).catchError((e) {
           debugPrint('Erreur listAffiliationStds: $e');
           return [];
         }),
-        AffiliationService.listUserTerritoires().catchError((e) {
+        AffiliationService.listUserTerritoires(forceRefresh: forceRefresh).catchError((e) {
           debugPrint('Erreur listUserTerritoires: $e');
           return [];
         }),
-        AffiliationService.listOffres().catchError((e) {
+        AffiliationService.listOffres(forceRefresh: forceRefresh).catchError((e) {
           debugPrint('Erreur listOffres: $e');
           return [];
         }),
-        TerritoryService.getRegionsBasic().catchError((_) => []),
-        TerritoryService.getDistrictsBasic().catchError((_) => []),
-        TerritoryService.getCommunesBasic().catchError((_) => []),
+        TerritoryService.getRegionsBasic(forceRefresh: forceRefresh).catchError((_) => []),
+        TerritoryService.getDistrictsBasic(forceRefresh: forceRefresh).catchError((_) => []),
+        TerritoryService.getCommunesBasic(forceRefresh: forceRefresh).catchError((_) => []),
       ]);
 
       if (mounted) {
@@ -953,7 +1002,11 @@ class _AffiliationPageState extends State<AffiliationPage>
                             _showSnackBar('Affiliation STD enregistrée');
                             _loadInitialData();
                           } catch (e) {
-                            _showSnackBar('Erreur d\'affiliation STD: $e', isError: true);
+                            String errorMsg = e.toString();
+                            if (errorMsg.contains("territoire") || errorMsg.contains("403")) {
+                              errorMsg = "Le territoire de l'utilisateur n'est pas inclus dans les territoires couverts par ce STD. Veuillez d'abord lui affecter un territoire compatible.";
+                            }
+                            _showSnackBar(errorMsg, isError: true);
                           }
                         },
                         child: const Text('Confirmer', style: TextStyle(fontWeight: FontWeight.bold)),

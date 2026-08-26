@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/providers/auth_provider.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -66,7 +67,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (user == null || user.userId.isEmpty) {
       setState(() {
-        _error = "Impossible de récupérer l'identifiant utilisateur. Veuillez vous reconnecter.";
+        _error = context.tr('profil.erreur_id');
       });
       return;
     }
@@ -97,7 +98,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (updateData.isEmpty) {
         setState(() {
-          _error = "Aucune modification détectée. Veuillez modifier au moins un champ.";
+          _error = context.tr('profil.aucune_modif');
           _loading = false;
         });
         return;
@@ -115,7 +116,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
         if (mounted) {
           setState(() {
-            _success = "Profil mis à jour avec succès !";
+            _success = context.tr('profil.succes');
             _passwordController.clear();
           });
           Future.delayed(const Duration(seconds: 2), () {
@@ -141,7 +142,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } catch (err) {
       if (mounted) {
-        setState(() => _error = "Erreur réseau lors de la mise à jour du profil : $err");
+        setState(() => _error = context.tr('profil.erreur_reseau'));
       }
     } finally {
       if (mounted) {
@@ -169,14 +170,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   onPressed: _navigateBack,
                   icon: Icon(Icons.arrow_back,
                       color: isDark ? Colors.grey.shade400 : Colors.grey),
-                  label: Text("Retour",
+                  label: Text(context.tr('profil.retour'),
                       style: TextStyle(
                           color: isDark ? Colors.grey.shade400 : Colors.grey)),
                   style: TextButton.styleFrom(padding: EdgeInsets.zero),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  "Modifier mon profil",
+                  context.tr('profil.titre'),
                   style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -184,7 +185,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Mettez à jour vos informations personnelles",
+                  context.tr('profil.sous_titre'),
                   style: TextStyle(
                       fontSize: 14,
                       color: isDark ? Colors.grey.shade400 : Colors.grey),
@@ -213,9 +214,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         // Pseudo
                         _buildTextField(
                           controller: _pseudoController,
-                          label: "Pseudo",
+                          label: context.tr('profil.pseudo'),
                           icon: Icons.person_outline,
-                          hint: "Votre pseudo",
+                          hint: context.tr('profil.pseudo_hint'),
                           isDark: isDark,
                         ),
                         const SizedBox(height: 20),
@@ -223,9 +224,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         // Email
                         _buildTextField(
                           controller: _emailController,
-                          label: "Email",
+                          label: context.tr('profil.email'),
                           icon: Icons.mail_outline,
-                          hint: "votre@email.mg",
+                          hint: context.tr('profil.email_hint'),
                           keyboardType: TextInputType.emailAddress,
                           isDark: isDark,
                         ),
@@ -234,9 +235,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         // Téléphone
                         _buildTextField(
                           controller: _phoneController,
-                          label: "Téléphone",
+                          label: context.tr('profil.telephone'),
                           icon: Icons.phone_outlined,
-                          hint: "0321234567",
+                          hint: context.tr('profil.telephone_hint'),
                           keyboardType: TextInputType.phone,
                           isDark: isDark,
                         ),
@@ -255,7 +256,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         : Colors.grey),
                                 const SizedBox(width: 8),
                                 Text(
-                                  "Nouveau mot de passe (optionnel)",
+                                  context.tr('profil.nouveau_pass'),
                                   style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -274,8 +275,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       ? Colors.white
                                       : Colors.black87),
                               decoration: InputDecoration(
-                                hintText:
-                                    "Laisser vide pour ne pas changer",
+                                hintText: context.tr('profil.pass_hint'),
                                 hintStyle: TextStyle(
                                     color: isDark
                                         ? Colors.grey.shade500
@@ -305,7 +305,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "Laissez ce champ vide si vous ne souhaitez pas changer votre mot de passe",
+                              context.tr('profil.pass_note'),
                               style: TextStyle(
                                   fontSize: 12,
                                   color: isDark
@@ -396,7 +396,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                           : Colors.grey.shade400),
                                 ),
                                 child: Text(
-                                  "Annuler",
+                                  context.tr('profil.btn_annuler'),
                                   style: TextStyle(
                                       color: isDark
                                           ? Colors.grey.shade300
@@ -425,13 +425,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                             color: Colors.white,
                                             strokeWidth: 2),
                                       )
-                                    : const Row(
+                                    : Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.save, size: 18),
-                                          SizedBox(width: 8),
-                                          Text("Enregistrer"),
+                                          const Icon(Icons.save, size: 18),
+                                          const SizedBox(width: 8),
+                                          Text(context.tr('profil.btn_enregistrer')),
                                         ],
                                       ),
                               ),

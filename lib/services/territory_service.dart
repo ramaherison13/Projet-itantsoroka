@@ -20,9 +20,23 @@ class TerritoryService {
     'Accept': 'application/json',
   };
 
+  // Cache statique en mémoire pour éviter le téléchargement répété des territoires
+  static List<dynamic>? _cachedRegions;
+  static List<dynamic>? _cachedDistricts;
+  static List<dynamic>? _cachedCommunes;
+
+  static void clearCache() {
+    _cachedRegions = null;
+    _cachedDistricts = null;
+    _cachedCommunes = null;
+  }
+
   static String _endpoint(String path) => '$baseUrl$path';
 
-  static Future<List<dynamic>?> getAllCommunes() async {
+  static Future<List<dynamic>?> getAllCommunes({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedCommunes != null && _cachedCommunes!.isNotEmpty) {
+      return _cachedCommunes;
+    }
     try {
       final response = await http
           .get(Uri.parse(_endpoint('/communes/sans-form')), headers: headers)
@@ -30,13 +44,16 @@ class TerritoryService {
       debugPrint("COMMUNES: ${response.body}");
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        if (decoded is List) return decoded;
-        return _extractArray(decoded);
+        final list = (decoded is List) ? decoded : _extractArray(decoded);
+        if (list != null && list.isNotEmpty) {
+          _cachedCommunes = list;
+        }
+        return list;
       }
-      return null;
+      return _cachedCommunes;
     } catch (error) {
       debugPrint("Erreur lors de la récupération des communes: $error");
-      return null;
+      return _cachedCommunes;
     }
   }
 
@@ -76,12 +93,26 @@ class TerritoryService {
     return null;
   }
 
-  static Future<List<dynamic>?> getAllRegions() async {
-    return _fetchTerritoryList('/regions', "des régions");
+  static Future<List<dynamic>?> getAllRegions({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedRegions != null && _cachedRegions!.isNotEmpty) {
+      return _cachedRegions;
+    }
+    final res = await _fetchTerritoryList('/regions', "des régions");
+    if (res != null && res.isNotEmpty) {
+      _cachedRegions = res;
+    }
+    return res ?? _cachedRegions;
   }
 
-  static Future<List<dynamic>?> getAllDistricts() async {
-    return _fetchTerritoryList('/districts', "des districts");
+  static Future<List<dynamic>?> getAllDistricts({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedDistricts != null && _cachedDistricts!.isNotEmpty) {
+      return _cachedDistricts;
+    }
+    final res = await _fetchTerritoryList('/districts', "des districts");
+    if (res != null && res.isNotEmpty) {
+      _cachedDistricts = res;
+    }
+    return res ?? _cachedDistricts;
   }
 
   static Future<dynamic> getTerritoryByFormattedId(String? id) async {
@@ -100,31 +131,52 @@ class TerritoryService {
     }
   }
 
-  static Future<List<dynamic>?> getRegionsBasic() async {
-    return _fetchTerritoryList(
+  static Future<List<dynamic>?> getRegionsBasic({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedRegions != null && _cachedRegions!.isNotEmpty) {
+      return _cachedRegions;
+    }
+    final res = await _fetchTerritoryList(
       '/regions',
       "des régions",
       fallbackPath: '/regions/basic?page=1&limit=24',
     );
+    if (res != null && res.isNotEmpty) {
+      _cachedRegions = res;
+    }
+    return res ?? _cachedRegions;
   }
 
   /// Récupère la liste des districts.
-  static Future<List<dynamic>?> getDistrictsBasic() async {
-    return _fetchTerritoryList(
+  static Future<List<dynamic>?> getDistrictsBasic({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedDistricts != null && _cachedDistricts!.isNotEmpty) {
+      return _cachedDistricts;
+    }
+    final res = await _fetchTerritoryList(
       '/districts',
       "des districts",
       fallbackPath: '/districts/sans-form',
     );
+    if (res != null && res.isNotEmpty) {
+      _cachedDistricts = res;
+    }
+    return res ?? _cachedDistricts;
   }
 
   /// Récupère les communes. Essaie d'abord /communes/sans-form (pas de pagination)
   /// puis /communes/basic en fallback.
-  static Future<List<dynamic>?> getCommunesBasic() async {
-    return _fetchTerritoryList(
+  static Future<List<dynamic>?> getCommunesBasic({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedCommunes != null && _cachedCommunes!.isNotEmpty) {
+      return _cachedCommunes;
+    }
+    final res = await _fetchTerritoryList(
       '/communes/sans-form',
       "des communes",
       fallbackPath: '/communes/basic?page=1&limit=1579',
     );
+    if (res != null && res.isNotEmpty) {
+      _cachedCommunes = res;
+    }
+    return res ?? _cachedCommunes;
   }
 
   static Future<List<dynamic>?> getCommunesByDistrict(String districtFormattedId) async {

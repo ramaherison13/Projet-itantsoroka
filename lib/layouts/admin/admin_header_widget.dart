@@ -103,6 +103,14 @@ class _AdminHeaderWidgetState extends State<AdminHeaderWidget>
         final res = _extractNameFromJson(data['data']);
         if (res != null) return res;
       }
+      if (data['matchedEntity'] != null) {
+        final res = _extractNameFromJson(data['matchedEntity']);
+        if (res != null) return res;
+      }
+      if (data['matchedTerritory'] != null) {
+        final res = _extractNameFromJson(data['matchedTerritory']);
+        if (res != null) return res;
+      }
       if (data['district'] != null) {
         final res = _extractNameFromJson(data['district']);
         if (res != null) return res;
@@ -137,11 +145,11 @@ class _AdminHeaderWidgetState extends State<AdminHeaderWidget>
 
     const String apiUrl = ApiConstants.gatewayBaseUrl;
     final endpoints = [
-      '$apiUrl/servicetritoire-v2/districts/$id',
-      '$apiUrl/servicetritoire-v2/communes/noForm/$id',
-      '$apiUrl/servicetritoire-v2/communes/$id',
-      '$apiUrl/servicetritoire-v2/regions/$id',
-      '$apiUrl/serviceressource/districts',
+      '$apiUrl/serviceterritoire-v2/serviceterritoire/get-code/$id',
+      '$apiUrl/serviceterritoire-v2/districts/$id',
+      '$apiUrl/serviceterritoire-v2/communes/noForm/$id',
+      '$apiUrl/serviceterritoire-v2/communes/$id',
+      '$apiUrl/serviceterritoire-v2/regions/$id',
     ];
 
     for (final ep in endpoints) {
@@ -445,132 +453,191 @@ class _AdminHeaderWidgetState extends State<AdminHeaderWidget>
           elevation: 0,
           insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Container(
-            width: 340,
+            width: 350,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
+                color: const Color(0xFF00E676).withValues(alpha: 0.2),
+                width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 32,
-                  offset: const Offset(0, 12),
+                  color: Colors.black.withValues(alpha: 0.6),
+                  blurRadius: 36,
+                  spreadRadius: 4,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  spreadRadius: -4,
                 ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Bouton Fermer (X) ─────────────────────────────────────────
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 10, right: 10),
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white60, size: 20),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      splashRadius: 18,
-                    ),
-                  ),
-                ),
-
-                // ── Avatar avec Logo Oeil Vert Glowing ────────────────────────
-                Container(
-                  width: 76,
-                  height: 76,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF0F2618),
-                    border: Border.all(color: const Color(0xFF00E676), width: 2.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00E676).withValues(alpha: 0.35),
-                        blurRadius: 20,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Image.asset(
-                        'assets/images/logo_dd_v3.png',
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Image.asset(
-                          'assets/images/logo_dd.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (ctx, err, _) => const Icon(
-                            Icons.visibility_rounded,
-                            color: Color(0xFF00E676),
-                            size: 36,
-                          ),
+                // ── Couverture Dégradé Réseau Social ─────────────────────────
+                Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      height: 85,
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF064E3B),
+                            Color(0xFF022C22),
+                            Color(0xFF065F46),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // ── Nom complet ──────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    fullName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.2,
+                    // Bouton fermer (X)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          splashRadius: 18,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
                     ),
-                  ),
+                    // Avatar chevauchant le header avec ring néon & badge online
+                    Positioned(
+                      bottom: -36,
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 78,
+                            height: 78,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF0F2618),
+                              border: Border.all(color: const Color(0xFF00E676), width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00E676).withValues(alpha: 0.45),
+                                  blurRadius: 16,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Image.asset(
+                                  'assets/images/logo_dd_v3.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                                    'assets/images/logo_dd.png',
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (ctx, err, _) => const Icon(
+                                      Icons.visibility_rounded,
+                                      color: Color(0xFF00E676),
+                                      size: 36,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Badge Online Vert
+                          Positioned(
+                            right: 4,
+                            bottom: 4,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E676),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: cardBg, width: 2.5),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 44),
 
-                // ── Pseudo @handle ───────────────────────────────────────────
-                Text(
-                  '@$pseudo',
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF00E676),
-                  ),
-                ),
-                const SizedBox(height: 22),
-
-                // ── Liste des informations du profil ─────────────────────────
+                // ── Nom complet & Pseudo @handle ──────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      // 1. Toerana misy (Location)
+                      Text(
+                        fullName,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          '@$pseudo',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF00E676),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // ── Liste des informations du profil ─────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Column(
+                    children: [
                       _buildAdminProfileInfoItem(
                         icon: Icons.location_on_outlined,
                         label: 'Toerana misy',
                         value: locationStr,
                       ),
-                      const SizedBox(height: 14),
-
-                      // 2. Andraikitra (Roles)
+                      const SizedBox(height: 10),
                       _buildAdminProfileInfoItem(
                         icon: Icons.cases_outlined,
                         label: 'Andraikitra',
                         value: rolesStr,
+                        isRoles: true,
                       ),
-                      const SizedBox(height: 14),
-
-                      // 3. Mailaka (Email)
+                      const SizedBox(height: 10),
                       _buildAdminProfileInfoItem(
                         icon: Icons.email_outlined,
                         label: 'Mailaka',
                         value: emailStr,
                       ),
-                      const SizedBox(height: 14),
-
-                      // 4. Laharana finday (Phone)
+                      const SizedBox(height: 10),
                       _buildAdminProfileInfoItem(
                         icon: Icons.phone_outlined,
                         label: 'Laharana finday',
@@ -579,37 +646,77 @@ class _AdminHeaderWidgetState extends State<AdminHeaderWidget>
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
-                // ── Bouton "Modifier mon profil" ──────────────────────────────
+                // ── Boutons d'Action (Modifier + Déconnexion) ───────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        context.go('/profile/edit');
-                      },
-                      icon: const Icon(Icons.edit_square, size: 19),
-                      label: const Text(
-                        'Modifier mon profil',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14.5,
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+                  child: Column(
+                    children: [
+                      // 1. Bouton "Modifier mon profil"
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            context.go('/profile/edit');
+                          },
+                          icon: const Icon(Icons.edit_rounded, size: 19),
+                          label: const Text(
+                            'Modifier mon profil',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            elevation: 3,
+                            shadowColor: const Color(0xFF16A34A).withValues(alpha: 0.4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF098E00),
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        shadowColor: const Color(0xFF098E00).withValues(alpha: 0.4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      const SizedBox(height: 10),
+                      // 2. Bouton "Déconnexion"
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            Navigator.of(ctx).pop();
+                            final auth = Provider.of<AuthProvider>(context, listen: false);
+                            await auth.logout();
+                            if (context.mounted) {
+                              context.go('/');
+                            }
+                          },
+                          icon: const Icon(Icons.logout_rounded, size: 19, color: Color(0xFFEF4444)),
+                          label: const Text(
+                            'Déconnexion',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Color(0xFFEF4444),
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                            foregroundColor: const Color(0xFFEF4444),
+                            side: BorderSide(color: const Color(0xFFEF4444).withValues(alpha: 0.4), width: 1.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ],
@@ -624,45 +731,84 @@ class _AdminHeaderWidgetState extends State<AdminHeaderWidget>
     required IconData icon,
     required String label,
     required String value,
+    bool isRoles = false,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Icon(
-            icon,
-            color: const Color(0xFF00E676),
-            size: 20,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00E676).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF00E676),
+              size: 18,
+            ),
           ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  color: Color(0xFF94A3B8),
-                  fontWeight: FontWeight.w500,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  height: 1.35,
-                ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                if (isRoles)
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: value.split(',').map((r) {
+                      final roleClean = r.trim();
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          roleClean,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  )
+                else
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/app_localization.dart';
 import '../../services/event_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -20,34 +21,34 @@ class _HomePageState extends State<HomePage> {
   int _newsTotal = 0;
   List<Map<String, dynamic>> _newsItems = [];
 
-  final List<Map<String, dynamic>> _modules = [
+  List<Map<String, dynamic>> _getModules(BuildContext context) => [
     {
-      'title': 'Monographie Territoriale',
-      'description': 'Fiches synthétiques et statistiques par district, région et commune.',
+      'title': context.tr('mod_monographie_title'),
+      'description': context.tr('mod_monographie_desc'),
       'icon': Icons.map_outlined,
       'color': const Color(0xFF098E00),
       'gradient': [const Color(0xFF098E00), const Color(0xFF0dba00)],
       'path': '/monographie',
     },
     {
-      'title': 'Gestion Documentaire',
-      'description': 'Consultez, téléchargez et gérez les arrêtés et ressources officielles.',
+      'title': context.tr('mod_documentaire_title'),
+      'description': context.tr('mod_documentaire_desc'),
       'icon': Icons.description_outlined,
       'color': const Color(0xFF1565C0),
       'gradient': [const Color(0xFF1565C0), const Color(0xFF1976D2)],
       'path': '/document',
     },
     {
-      'title': 'Office des Projets',
-      'description': 'Suivi des budgets, des livrables et des impacts de chaque projet.',
+      'title': context.tr('mod_projets_title'),
+      'description': context.tr('mod_projets_desc'),
       'icon': Icons.business_center_outlined,
       'color': const Color(0xFF6A1B9A),
       'gradient': [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
       'path': '/officeprojet',
     },
     {
-      'title': 'Contrôle de Légalité',
-      'description': 'Soumettez, vérifiez et archivez les actes administratifs locaux.',
+      'title': context.tr('mod_legalite_title'),
+      'description': context.tr('mod_legalite_desc'),
       'icon': Icons.gavel_outlined,
       'color': const Color(0xFFE65100),
       'gradient': [const Color(0xFFE65100), const Color(0xFFEF6C00)],
@@ -55,11 +56,11 @@ class _HomePageState extends State<HomePage> {
     },
   ];
 
-  final List<Map<String, dynamic>> _stats = [
-    {'label': 'Districts', 'value': '119', 'icon': Icons.location_city_outlined},
-    {'label': 'Communes', 'value': '1695', 'icon': Icons.account_balance_outlined},
-    {'label': 'Documents', 'value': '3.2k+', 'icon': Icons.folder_outlined},
-    {'label': 'Projets suivis', 'value': '250+', 'icon': Icons.trending_up},
+  List<Map<String, dynamic>> _getStats(BuildContext context) => [
+    {'label': context.tr('home_stat_districts'), 'value': '119', 'icon': Icons.location_city_outlined},
+    {'label': context.tr('home_stat_communes'), 'value': '1695', 'icon': Icons.account_balance_outlined},
+    {'label': context.tr('home_stat_documents'), 'value': '3.2k+', 'icon': Icons.folder_outlined},
+    {'label': context.tr('home_stat_projects'), 'value': '250+', 'icon': Icons.trending_up},
   ];
 
   final List<Map<String, dynamic>> _partners = [
@@ -185,17 +186,17 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Bonjour, bienvenue',
-                        style: TextStyle(
+                        context.tr('home_welcome'),
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
+                      const SizedBox(height: 4),
+                      const Text(
                         'Itantsoroka',
                         style: TextStyle(
                           color: Colors.white,
@@ -213,12 +214,12 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
-                      children: const [
-                        Icon(Icons.smartphone, size: 18, color: Colors.white),
-                        SizedBox(width: 8),
+                      children: [
+                        const Icon(Icons.smartphone, size: 18, color: Colors.white),
+                        const SizedBox(width: 8),
                         Text(
-                          'Application Mobile',
-                          style: TextStyle(color: Colors.white, fontSize: 12),
+                          context.tr('home_mobile_app'),
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
                         ),
                       ],
                     ),
@@ -227,7 +228,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 18),
               Text(
-                'Plateforme unifiée de suivi territorial, données et pilotage.',
+                context.tr('home_hero_desc'),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.88),
                   fontSize: 15,
@@ -239,9 +240,9 @@ class _HomePageState extends State<HomePage> {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _buildHeroChip(Icons.analytics_outlined, 'Statistiques'),
-                  _buildHeroChip(Icons.map_outlined, 'Cartographie'),
-                  _buildHeroChip(Icons.shield_outlined, 'Sécurité'),
+                  _buildHeroChip(Icons.analytics_outlined, context.tr('home_stats_chip')),
+                  _buildHeroChip(Icons.map_outlined, context.tr('home_carto_chip')),
+                  _buildHeroChip(Icons.shield_outlined, context.tr('home_secu_chip')),
                 ],
               ),
               const SizedBox(height: 22),
@@ -263,9 +264,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           onPressed: () => context.go('/monographie'),
-                          child: const Text(
-                            'Accéder à la monographie',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          child: Text(
+                            context.tr('home_access_monog'),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -279,7 +280,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           onPressed: () => context.go('/officeprojet'),
-                          child: const Text('Voir les projets'),
+                          child: Text(context.tr('home_see_projects')),
                         ),
                       ],
                     );
@@ -298,9 +299,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           onPressed: () => context.go('/monographie'),
-                          child: const Text(
-                            'Accéder à la monographie',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          child: Text(
+                            context.tr('home_access_monog'),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -315,7 +316,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         onPressed: () => context.go('/officeprojet'),
-                        child: const Text('Voir les projets'),
+                        child: Text(context.tr('home_see_projects')),
                       ),
                     ],
                   );
@@ -331,22 +332,22 @@ class _HomePageState extends State<HomePage> {
   Widget _buildShortcutSection(BuildContext context, bool isDarkMode) {
     final shortcuts = [
       {
-        'title': 'Derniers indicateurs',
-        'subtitle': 'Voir les statistiques récentes de la plateforme',
+        'title': context.tr('home_shortcut_indicators'),
+        'subtitle': context.tr('home_shortcut_indicators_desc'),
         'icon': Icons.show_chart,
         'color': const Color(0xFF0D7817),
         'path': '/das',
       },
       {
-        'title': 'Rapports à imprimer',
-        'subtitle': 'Générez les rapports de suivi et de contrôle en PDF',
+        'title': context.tr('home_shortcut_reports'),
+        'subtitle': context.tr('home_shortcut_reports_desc'),
         'icon': Icons.picture_as_pdf,
         'color': const Color(0xFF1565C0),
         'path': '/document',
       },
       {
-        'title': 'Aide et support',
-        'subtitle': 'Consultez les actualités et ressources utiles',
+        'title': context.tr('home_shortcut_help'),
+        'subtitle': context.tr('home_shortcut_help_desc'),
         'icon': Icons.support_agent,
         'color': const Color(0xFF6A1B9A),
         'path': '/actualites',
@@ -357,8 +358,8 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          'Raccourcis',
-          'Accédez rapidement aux actions les plus utiles',
+          context.tr('home_shortcuts_title'),
+          context.tr('home_shortcuts_subtitle'),
           isDarkMode,
         ),
         const SizedBox(height: 16),
@@ -512,10 +513,10 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          'Actualités',
+          context.tr('home_news_title'),
           _loadingNews
-              ? 'Chargement des dernières actualités...'
-              : '${_newsTotal > 0 ? _newsTotal : 'Pas'} actualités disponibles',
+              ? context.tr('home_news_loading')
+              : '${_newsTotal > 0 ? _newsTotal : '0'} ${context.tr('home_news_title').toLowerCase()}',
           isDarkMode,
         ),
         const SizedBox(height: 16),
@@ -530,7 +531,7 @@ class _HomePageState extends State<HomePage> {
               : _newsItems.isEmpty
                   ? Center(
                       child: Text(
-                        'Aucune actualité disponible pour le moment.',
+                        context.tr('home_news_empty'),
                         style: TextStyle(
                           color: isDarkMode ? Colors.white60 : Colors.grey.shade700,
                         ),
@@ -608,9 +609,9 @@ class _HomePageState extends State<HomePage> {
                                                   color: const Color(0xFF098E00).withValues(alpha: 0.15),
                                                   borderRadius: BorderRadius.circular(6),
                                                 ),
-                                                child: const Text(
-                                                  "ACTUALITÉ",
-                                                  style: TextStyle(
+                                                child: Text(
+                                                  context.tr('home_news_badge'),
+                                                  style: const TextStyle(
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                     color: Color(0xFF098E00),
@@ -641,7 +642,7 @@ class _HomePageState extends State<HomePage> {
                                           Expanded(
                                             child: Text(
                                               description.isEmpty
-                                                  ? 'Aucune description supplémentaire'
+                                                  ? context.tr('home_news_no_desc')
                                                   : description,
                                               maxLines: isSmallScreen ? 2 : 3,
                                               overflow: TextOverflow.ellipsis,
@@ -657,7 +658,7 @@ class _HomePageState extends State<HomePage> {
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                'Lire plus',
+                                                context.tr('home_news_read_more'),
                                                 style: TextStyle(
                                                   fontSize: 12.5,
                                                   fontWeight: FontWeight.bold,
@@ -754,12 +755,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildModuleSection(BuildContext context, bool isDarkMode, double screenWidth) {
+    final modules = _getModules(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          'Modules rapides',
-          'Accédez directement aux principales fonctionnalités',
+          context.tr('home_modules_title'),
+          context.tr('home_modules_subtitle'),
           isDarkMode,
         ),
         const SizedBox(height: 18),
@@ -767,11 +769,11 @@ class _HomePageState extends State<HomePage> {
           height: 240,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _modules.length,
+            itemCount: modules.length,
             separatorBuilder: (context, index) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               return _ModuleCard(
-                module: _modules[index],
+                module: modules[index],
                 isDarkMode: isDarkMode,
                 width: screenWidth < 560 ? 240 : 280,
               );
@@ -783,12 +785,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildStatsSection(BuildContext context, bool isDarkMode) {
+    final stats = _getStats(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          'En chiffres',
-          'Quelques indicateurs clés de la plateforme',
+          context.tr('home_stats_title'),
+          context.tr('home_stats_subtitle'),
           isDarkMode,
         ),
         const SizedBox(height: 16),
@@ -796,10 +799,10 @@ class _HomePageState extends State<HomePage> {
           height: 160,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _stats.length,
+            itemCount: stats.length,
             separatorBuilder: (context, index) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
-              return _StatCard(stat: _stats[index], isDarkMode: isDarkMode);
+              return _StatCard(stat: stats[index], isDarkMode: isDarkMode);
             },
           ),
         ),
@@ -838,10 +841,10 @@ class _HomePageState extends State<HomePage> {
               child: const Icon(Icons.person_add_alt_1, size: 38, color: Colors.white),
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Rejoignez la plateforme',
+            Text(
+              context.tr('home_join_title'),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
                 color: Colors.white,
@@ -849,7 +852,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Créez un compte et obtenez un accès complet aux données, aux projets et aux rapports territoriaux.',
+              context.tr('home_join_desc'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.88),
@@ -862,9 +865,9 @@ class _HomePageState extends State<HomePage> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _buildBenefitChip(Icons.check_circle_outline, 'Accès complet'),
-                _buildBenefitChip(Icons.security_outlined, 'Sécurité renforcée'),
-                _buildBenefitChip(Icons.sync_alt, 'Mises à jour rapides'),
+                _buildBenefitChip(Icons.check_circle_outline, context.tr('home_benefit_access')),
+                _buildBenefitChip(Icons.security_outlined, context.tr('home_benefit_security')),
+                _buildBenefitChip(Icons.sync_alt, context.tr('home_benefit_updates')),
               ],
             ),
             const SizedBox(height: 24),
@@ -881,9 +884,9 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     onPressed: () => context.go('/auth/check-id-card'),
-                    child: const Text(
-                      'S\'inscrire maintenant',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      context.tr('home_signup_now'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -899,7 +902,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     onPressed: () => context.go('/auth/login'),
-                    child: const Text('Se connecter'),
+                    child: Text(context.tr('se_connect')),
                   ),
                 ),
               ],
@@ -923,10 +926,10 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Icon(Icons.check_circle_outline, color: Colors.white, size: 32),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Votre compte est activé. Accédez dès maintenant aux modules et aux données territoriales.',
-                style: TextStyle(color: Colors.white, fontSize: 15, height: 1.55),
+                context.tr('home_account_active'),
+                style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.55),
               ),
             ),
             const SizedBox(width: 14),
@@ -939,7 +942,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               onPressed: () => context.go('/modules'),
-              child: const Text('Modules', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(context.tr('sidebar_modules'), style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -955,14 +958,14 @@ class _HomePageState extends State<HomePage> {
         ),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.hourglass_empty, color: Colors.white, size: 32),
-          SizedBox(width: 16),
+          const Icon(Icons.hourglass_empty, color: Colors.white, size: 32),
+          const SizedBox(width: 16),
           Expanded(
             child: Text(
-              'Votre compte est en attente d\'activation. Veuillez patienter pendant l\'approbation.',
-              style: TextStyle(color: Colors.white, fontSize: 15, height: 1.55),
+              context.tr('home_account_pending'),
+              style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.55),
             ),
           ),
         ],
@@ -975,8 +978,8 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          'Partenaires',
-          'Institutions et organismes soutenant la plateforme',
+          context.tr('home_partners_title'),
+          context.tr('home_partners_subtitle'),
           isDarkMode,
         ),
         const SizedBox(height: 16),
@@ -1166,7 +1169,7 @@ class _ModuleCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'Accéder',
+                    context.tr('home_access'),
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: color,

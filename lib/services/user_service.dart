@@ -138,110 +138,156 @@ class UserService {
     return getAllUsersByApplicationRole(page: page, search: search);
   }
 
+  static final Map<String, Map<String, dynamic>> _citizenCacheById = {};
+  static final Map<String, Map<String, dynamic>> _citizenCacheByCin = {};
+  static final Map<String, Map<String, dynamic>> _citizenCacheByUserId = {};
+  static final Set<String> _invalidCins = {"", "0"};
+  static final Set<String> _invalidUserIds = {"", "0"};
+
   static Future<List<Map<String, dynamic>>> enrichUsersWithCitizens(List<dynamic> usersList) async {
     const headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
 
-    final List<Future<Map<String, dynamic>>> futures = usersList.map((u) async {
-      if (u is! Map) return {'user': u, 'citoyen': null, 'appUserRoles': []};
+    // Traitement par lots (batch size = 15) pour éviter la saturation du pool HTTP
+    const int batchSize = 15;
+    final List<Map<String, dynamic>> result = [];
 
-      dynamic userObj = u['user'] is Map ? u['user'] : u;
-      dynamic citoyenObj = u['citoyen'] is Map
-          ? u['citoyen']
-          : (u['citizen'] is Map
-              ? u['citizen']
-              : (userObj is Map && userObj['citoyen'] is Map
-                  ? userObj['citoyen']
-                  : (userObj is Map && userObj['citizen'] is Map
-                      ? userObj['citizen']
-                      : null)));
+    for (int i = 0; i < usersList.length; i += batchSize) {
+      final batch = usersList.sublist(
+        i,
+        i + batchSize > usersList.length ? usersList.length : i + batchSize,
+      );
 
-      final citizenId = userObj['id_citizen'] ?? userObj['citizen_id'] ?? u['id_citizen'] ?? u['citizen_id'];
-      final cinNumber = citoyenObj?['citizen_national_card_number'] ?? userObj['user_cin'] ?? userObj['cin'] ?? u['user_cin'] ?? u['cin'];
-      final userId = userObj['user_id'] ?? userObj['id_user'] ?? userObj['id'] ?? u['user_id'] ?? u['id_user'];
+      final batchFutures = batch.map((u) => _enrichSingleUser(u, headers));
+      final batchResults = await Future.wait(batchFutures);
+      result.addAll(batchResults);
+    }
 
-      // Si le citoyen n'est pas encore présent ou s'il est null dans la réponse API
-      if (citoyenObj == null) {
-        // 1. Essayer avec citizenId (UUID) sur servicecitoyen
-        if (citizenId != null && !_invalidCitizenIds.contains(citizenId.toString())) {
-          try {
-            final res = await http.get(
-              Uri.parse('$citizenBaseUrl/citizens/getCitizenById/$citizenId'),
-              headers: headers,
-            ).timeout(const Duration(seconds: 2));
+    return result;
+  }
 
-            if (res.statusCode >= 200 && res.statusCode < 300) {
-              final body = jsonDecode(res.body);
-              if (body is Map) {
-                citoyenObj = body['data'] is Map ? body['data'] : (body['citizen'] is Map ? body['citizen'] : body);
-              } else if (body is List && body.isNotEmpty) {
-                citoyenObj = body.first;
-              }
-            } else if (res.statusCode >= 400) {
-              _invalidCitizenIds.add(citizenId.toString());
+  static Future<Map<String, dynamic>> _enrichSingleUser(dynamic u, Map<String, String> headers) async {
+    if (u is! Map) return {'user': u, 'citoyen': null, 'appUserRoles': []};
+
+    dynamic userObj = u['user'] is Map ? u['user'] : u;
+
+    dynamic citoyenObj =
+        (u['citizen'] is Map ? u['citizen'] : null) ??
+        (u['citoyen'] is Map ? u['citoyen'] : null) ??
+        (userObj is Map && userObj['citizen'] is Map ? userObj['citizen'] : null) ??
+        (userObj is Map && userObj['citoyen'] is Map ? userObj['citoyen'] : null);
+
+    final citizenId = (u['id_citizen'] ?? u['citizen_id'] ?? userObj['id_citizen'] ?? userObj['citizen_id'])?.toString();
+    final cinNumber = (citoyenObj?['citizen_national_card_number'] ?? userObj['user_cin'] ?? userObj['cin'] ?? u['user_cin'] ?? u['cin'])?.toString();
+    final userId = (u['user_id'] ?? u['id_user'] ?? userObj['user_id'] ?? userObj['id_user'] ?? userObj['id'])?.toString();
+
+    // 1. Si citoyenObj est déjà présent, l'enregistrer dans le cache
+    if (citoyenObj != null && citoyenObj is Map<String, dynamic>) {
+      if (citizenId != null && citizenId.isNotEmpty) _citizenCacheById[citizenId] = citoyenObj;
+      if (cinNumber != null && cinNumber.isNotEmpty) _citizenCacheByCin[cinNumber] = citoyenObj;
+      if (userId != null && userId.isNotEmpty) _citizenCacheByUserId[userId] = citoyenObj;
+    } else {
+      // 2. Tenter de récupérer depuis le cache mémoire
+      if (citizenId != null && _citizenCacheById.containsKey(citizenId)) {
+        citoyenObj = _citizenCacheById[citizenId];
+      } else if (cinNumber != null && _citizenCacheByCin.containsKey(cinNumber)) {
+        citoyenObj = _citizenCacheByCin[cinNumber];
+      } else if (userId != null && _citizenCacheByUserId.containsKey(userId)) {
+        citoyenObj = _citizenCacheByUserId[userId];
+      }
+    }
+
+    // 3. Si toujours null, effectuer les requêtes de secours avec vérification des identifiants invalides
+    if (citoyenObj == null) {
+      // (a) Via citizenId
+      if (citizenId != null && citizenId.isNotEmpty && !_invalidCitizenIds.contains(citizenId)) {
+        try {
+          final res = await http.get(
+            Uri.parse('$citizenBaseUrl/citizens/getCitizenById/$citizenId'),
+            headers: headers,
+          ).timeout(const Duration(milliseconds: 1500));
+
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            final body = jsonDecode(res.body);
+            if (body is Map) {
+              final data = body['data'] is Map ? body['data'] : (body['citizen'] is Map ? body['citizen'] : body);
+              if (data is Map<String, dynamic>) citoyenObj = data;
+            } else if (body is List && body.isNotEmpty && body.first is Map<String, dynamic>) {
+              citoyenObj = body.first;
             }
-          } catch (_) {
-            _invalidCitizenIds.add(citizenId.toString());
+          } else {
+            _invalidCitizenIds.add(citizenId);
           }
-        }
-
-        // 2. Si toujours nul, essayer avec le numéro de CIN (Card ID) sur servicecitoyen
-        if (citoyenObj == null &&
-            cinNumber != null && cinNumber.toString().trim().isNotEmpty) {
-          final cleanCin = cinNumber.toString().replaceAll(' ', '').trim();
-          try {
-            final res = await http.get(
-              Uri.parse('$citizenBaseUrl/citizens/$cleanCin'),
-              headers: headers,
-            ).timeout(const Duration(seconds: 2));
-
-            if (res.statusCode >= 200 && res.statusCode < 300) {
-              final body = jsonDecode(res.body);
-              if (body is Map) {
-                citoyenObj = body['data'] is Map ? body['data'] : (body['citizen'] is Map ? body['citizen'] : body);
-              } else if (body is List && body.isNotEmpty) {
-                citoyenObj = body.first;
-              }
-            }
-          } catch (_) {}
-        }
-
-        // 3. Si toujours nul, essayer via la route serviceauth /users/user-citizen/{id}
-        if (citoyenObj == null &&
-            userId != null && userId.toString().trim().isNotEmpty) {
-          try {
-            final userRes = await http.get(
-              Uri.parse('$baseUrl/users/user-citizen/$userId'),
-              headers: headers,
-            ).timeout(const Duration(seconds: 2));
-
-            if (userRes.statusCode >= 200 && userRes.statusCode < 300) {
-              final body = jsonDecode(userRes.body);
-              if (body is Map) {
-                final fetchedCitizen = body['citoyen'] ?? body['citizen'] ?? body['data'];
-                if (fetchedCitizen is Map) {
-                  citoyenObj = fetchedCitizen;
-                }
-              }
-            }
-          } catch (_) {}
+        } catch (_) {
+          _invalidCitizenIds.add(citizenId);
         }
       }
 
-      if (citizenId != null && citoyenObj == null) {
-        _invalidCitizenIds.add(citizenId.toString());
+      // (b) Via CIN
+      if (citoyenObj == null && cinNumber != null && cinNumber.trim().isNotEmpty && !_invalidCins.contains(cinNumber)) {
+        final cleanCin = cinNumber.replaceAll(' ', '').trim();
+        try {
+          final res = await http.get(
+            Uri.parse('$citizenBaseUrl/citizens/$cleanCin'),
+            headers: headers,
+          ).timeout(const Duration(milliseconds: 1500));
+
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            final body = jsonDecode(res.body);
+            if (body is Map) {
+              final data = body['data'] is Map ? body['data'] : (body['citizen'] is Map ? body['citizen'] : body);
+              if (data is Map<String, dynamic>) citoyenObj = data;
+            } else if (body is List && body.isNotEmpty && body.first is Map<String, dynamic>) {
+              citoyenObj = body.first;
+            }
+          } else {
+            _invalidCins.add(cinNumber);
+          }
+        } catch (_) {
+          _invalidCins.add(cinNumber);
+        }
       }
 
-      return {
-        'user': userObj,
-        'citoyen': citoyenObj,
-        'appUserRoles': userObj['appUserRoles'] ?? u['appUserRoles'] ?? userObj['roles'] ?? u['roles'],
-      };
-    }).toList();
+      // (c) Via userId
+      if (citoyenObj == null && userId != null && userId.trim().isNotEmpty && !_invalidUserIds.contains(userId)) {
+        try {
+          final userRes = await http.get(
+            Uri.parse('$baseUrl/users/user-citizen/$userId'),
+            headers: headers,
+          ).timeout(const Duration(milliseconds: 1500));
 
-    return await Future.wait(futures);
+          if (userRes.statusCode >= 200 && userRes.statusCode < 300) {
+            final body = jsonDecode(userRes.body);
+            if (body is Map) {
+              final fetchedCitizen = body['citoyen'] ?? body['citizen'] ?? body['data'];
+              if (fetchedCitizen is Map<String, dynamic>) citoyenObj = fetchedCitizen;
+            }
+          } else {
+            _invalidUserIds.add(userId);
+          }
+        } catch (_) {
+          _invalidUserIds.add(userId);
+        }
+      }
+
+      // Enregistrer dans le cache si trouvé
+      if (citoyenObj != null && citoyenObj is Map<String, dynamic>) {
+        if (citizenId != null && citizenId.isNotEmpty) _citizenCacheById[citizenId] = citoyenObj;
+        if (cinNumber != null && cinNumber.isNotEmpty) _citizenCacheByCin[cinNumber] = citoyenObj;
+        if (userId != null && userId.isNotEmpty) _citizenCacheByUserId[userId] = citoyenObj;
+      }
+    }
+
+    final String? userPhone = u['user_phone']?.toString() ?? userObj['user_phone']?.toString();
+
+    return {
+      'user': userObj,
+      'citoyen': citoyenObj,
+      'user_phone': userPhone,
+      'appUserRoles': u['appUserRoles'] ?? userObj['appUserRoles'] ?? u['roles'] ?? userObj['roles'],
+    };
   }
 
   static Future<Map<String, dynamic>?> getAllUsersByApplicationRole2Paged({

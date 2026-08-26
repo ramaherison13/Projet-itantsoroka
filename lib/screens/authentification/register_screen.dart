@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:itantsoroka/constants/api_constants.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
+import 'package:itantsoroka/widgets/language_setting_widget.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String globalCin;
@@ -142,7 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (fileSize > 2 * 1024 * 1024) {
         if (mounted) {
           setState(() {
-            errors['citizen_photo'] = "La photo doit être inférieure à 2 Mo";
+            errors['citizen_photo'] = context.tr('register.err_photo_size');
           });
         }
         return;
@@ -162,34 +164,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       errors.clear();
 
-      if (_nameController.text.isEmpty) errors['citizen_name'] = "Champs requis";
-      if (_addressController.text.isEmpty) errors['citizen_adress'] = "Champs requis";
-      if (selectedCommune == null) errors['municipality_id'] = "Champs requis";
+      final errRequis = context.tr('register.champ_requis');
+
+      if (_nameController.text.isEmpty) errors['citizen_name'] = errRequis;
+      if (_addressController.text.isEmpty) errors['citizen_adress'] = errRequis;
+      if (selectedCommune == null) errors['municipality_id'] = errRequis;
       if (selectedFokontany == null) {
-        errors['fokotany_id'] = "Champs requis";
-        errors['fokotany_formatted_id'] = "Champs requis";
+        errors['fokotany_id'] = errRequis;
+        errors['fokotany_formatted_id'] = errRequis;
       }
 
       if (_cinController.text.length != 12 || !RegExp(r'^\d+$').hasMatch(_cinController.text)) {
-        errors['citizen_national_card_number'] = "Le CIN doit contenir exactement 12 chiffres";
+        errors['citizen_national_card_number'] = context.tr('register.err_cin_12_chiffres');
       }
 
-      if (_cardLocationController.text.isEmpty) errors['citizen_national_card_location'] = "Champs requis";
-      if (_cardDateController.text.isEmpty) errors['citizen_national_card_date'] = "Champs requis";
+      if (_cardLocationController.text.isEmpty) errors['citizen_national_card_location'] = errRequis;
+      if (_cardDateController.text.isEmpty) errors['citizen_national_card_date'] = errRequis;
 
       if (_emailController.text.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailController.text)) {
-        errors['user_email'] = "Adresse email invalide";
+        errors['user_email'] = context.tr('register.err_email_invalide');
       }
 
-      if (_pseudoController.text.isEmpty) errors['user_pseudo'] = "Champs requis";
+      if (_pseudoController.text.isEmpty) errors['user_pseudo'] = errRequis;
 
       if (_phoneController.text.length != 10 || !RegExp(r'^\d+$').hasMatch(_phoneController.text)) {
-        errors['user_phone'] = "Le numéro doit contenir exactement 10 chiffres";
+        errors['user_phone'] = context.tr('register.err_phone_10_chiffres');
       }
 
-      if (_passwordController.text.isEmpty) errors['user_password'] = "Champs requis";
+      if (_passwordController.text.isEmpty) errors['user_password'] = errRequis;
       if (_passwordController.text != _confirmPasswordController.text) {
-        errors['confirm_password'] = "Les mots de passe ne correspondent pas";
+        errors['confirm_password'] = context.tr('register.err_password_mismatch');
       }
     });
 
@@ -218,13 +222,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     if (!validateFormFull()) {
-      _showAlert("Veuillez corriger les erreurs du formulaire", Colors.red);
+      _showAlert(context.tr('register.erreur_formulaire'), Colors.red);
       return;
     }
 
     setState(() {
       isLoading = true;
     });
+
+    // Capture translations before async
+    final msgSucces = context.tr('register.succes');
+    final msgErreur = context.tr('register.erreur_generique');
+    final msgErreurInscription = context.tr('register.erreur_inscription');
 
     try {
       var request = http.MultipartRequest('POST', Uri.parse('${ApiConstants.serviceAuth}/users/register-with-citizen-short'));
@@ -257,15 +266,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showAlert("Compte créé avec succès !", Colors.green);
+        _showAlert(msgSucces, Colors.green);
         if (mounted) {
           context.go('/auth/login');
         }
       } else {
-        _showAlert(data['message'] ?? "Erreur lors de l'inscription.", Colors.red);
+        _showAlert(data['message'] ?? msgErreurInscription, Colors.red);
       }
     } catch (error) {
-      _showAlert("Une erreur est survenue, veuillez réessayer plus tard.", Colors.red);
+      _showAlert(msgErreur, Colors.red);
     } finally {
       if (mounted) {
         setState(() {
@@ -406,6 +415,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: const [
+                      LanguageSettingWidget(),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   // Main Logo DISPOSITIF DISTRICT
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -468,7 +484,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Column(
                     children: [
                       Text(
-                        "Créer votre compte",
+                        context.tr('register.titre'),
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
@@ -479,18 +495,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 6),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.shield_outlined, size: 16, color: Color(0xFF098E00)),
-                          SizedBox(width: 6),
+                        children: [
+                          const Icon(Icons.shield_outlined, size: 16, color: Color(0xFF098E00)),
+                          const SizedBox(width: 6),
                           Text(
-                            "Plateforme Officielle — Dispositif District",
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF098E00)),
+                            context.tr('register.officiel'),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF098E00)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "Remplissez le formulaire ci-dessous (tous les champs sont obligatoires)",
+                        context.tr('register.sous_titre'),
                         style: TextStyle(fontSize: 12, color: subtitleColor),
                       ),
                     ],
@@ -508,7 +524,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Prénom",
+                              labelText: context.tr('register.prenom'),
                               icon: Icons.person_outline,
                               errorText: touched['citizen_lastname'] == true ? errors['citizen_lastname'] : null,
                             ),
@@ -519,7 +535,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Nom",
+                              labelText: context.tr('register.nom'),
                               icon: Icons.badge_outlined,
                               errorText: touched['citizen_name'] == true ? errors['citizen_name'] : null,
                             ),
@@ -530,7 +546,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Adresse",
+                              labelText: context.tr('register.adresse'),
                               icon: Icons.home_outlined,
                               errorText: touched['citizen_adress'] == true ? errors['citizen_adress'] : null,
                             ),
@@ -543,8 +559,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               onChanged: (val) => setState(() => query = val),
                               decoration: _customInputDecoration(
                               ctx: context,
-                                labelText: "Commune",
-                                hintText: "Rechercher une commune...",
+                                labelText: context.tr('register.commune'),
+                                hintText: context.tr('register.commune_hint'),
                                 icon: Icons.location_city_outlined,
                                 errorText: touched['municipality_id'] == true ? errors['municipality_id'] : null,
                               ),
@@ -611,8 +627,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextField(
                                 onChanged: (val) => setState(() => fokontanyQuery = val),
                                 decoration: InputDecoration(
-                                  labelText: "Sélectionner un fokontany",
-                                  hintText: "Rechercher un fokontany...",
+                                  labelText: context.tr('register.fokontany'),
+                                  hintText: context.tr('register.fokontany_hint'),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                   errorText: touched['fokotany_id'] == true ? errors['fokotany_id'] : null,
                                 ),
@@ -680,7 +696,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Numéro CIN",
+                              labelText: context.tr('register.cin'),
                               icon: Icons.credit_card_outlined,
                               errorText: touched['citizen_national_card_number'] == true ? errors['citizen_national_card_number'] : null,
                             ),
@@ -705,8 +721,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             },
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Date de délivrance",
-                              hintText: "AAAA-MM-JJ",
+                              labelText: context.tr('register.date_delivrance'),
+                              hintText: context.tr('register.date_hint'),
                               icon: Icons.calendar_today_outlined,
                               errorText: touched['citizen_national_card_date'] == true ? errors['citizen_national_card_date'] : null,
                             ),
@@ -718,7 +734,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Lieu de délivrance",
+                              labelText: context.tr('register.lieu_delivrance'),
                               icon: Icons.location_on_outlined,
                               errorText: touched['citizen_national_card_location'] == true ? errors['citizen_national_card_location'] : null,
                             ),
@@ -734,7 +750,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Adresse e-mail",
+                              labelText: context.tr('register.email'),
                               icon: Icons.email_outlined,
                               errorText: touched['user_email'] == true ? errors['user_email'] : null,
                             ),
@@ -747,7 +763,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Mot de passe",
+                              labelText: context.tr('register.mot_de_passe'),
                               icon: Icons.lock_outline,
                               errorText: touched['user_password'] == true ? errors['user_password'] : null,
                               suffixIcon: IconButton(
@@ -764,7 +780,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Confirmer le mot de passe",
+                              labelText: context.tr('register.confirmer_pass'),
                               icon: Icons.lock_outline,
                               errorText: touched['confirm_password'] == true ? errors['confirm_password'] : null,
                             ),
@@ -776,7 +792,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Pseudo",
+                              labelText: context.tr('register.pseudo'),
                               icon: Icons.account_circle_outlined,
                               errorText: touched['user_pseudo'] == true ? errors['user_pseudo'] : null,
                             ),
@@ -789,7 +805,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: "Téléphone",
+                              labelText: context.tr('register.telephone'),
                               icon: Icons.phone_outlined,
                               errorText: touched['user_phone'] == true ? errors['user_phone'] : null,
                             ),
@@ -846,12 +862,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
-                                      children: const [
-                                        Icon(Icons.add_a_photo_outlined, color: Color(0xFF16A34A), size: 20),
-                                        SizedBox(width: 8),
+                                      children: [
+                                        const Icon(Icons.add_a_photo_outlined, color: Color(0xFF16A34A), size: 20),
+                                        const SizedBox(width: 8),
                                         Text(
-                                          "Photo d'identité (Optionnel)",
-                                          style: TextStyle(color: Color(0xFF374151), fontSize: 14, fontWeight: FontWeight.w500),
+                                          context.tr('register.photo'),
+                                          style: const TextStyle(color: Color(0xFF374151), fontSize: 14, fontWeight: FontWeight.w500),
                                         ),
                                       ],
                                     ),
@@ -922,12 +938,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
+                              children: [
+                                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                                const SizedBox(width: 8),
                                 Text(
-                                  "Créer votre compte",
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                                  context.tr('register.btn_creer'),
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                               ],
                             ),
@@ -938,12 +954,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("Vous avez déjà un compte ? ", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      Text(context.tr('register.deja_compte'), style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () => context.go('/auth/login'),
-                        child: const Text(
-                          "Se connecter",
-                          style: TextStyle(color: Color(0xFF098E00), fontWeight: FontWeight.bold, fontSize: 14),
+                        child: Text(
+                          context.tr('register.se_connecter'),
+                          style: const TextStyle(color: Color(0xFF098E00), fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                       ),
                     ],

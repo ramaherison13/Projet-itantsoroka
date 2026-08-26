@@ -29,16 +29,22 @@ class RoleService {
     try {
       final response = await http.get(Uri.parse('$baseUrl/application/$appId'));
 
-      if (response.statusCode != 200) return null;
-
-      final data = jsonDecode(response.body);
-      
-      if (data != null && data['roles'] is List) {
-        List roles = data['roles'];
-        data['roles'] = roles.where((role) => role['role_id'] != defaultRoleId).toList();
+      if (response.statusCode == 200 && response.body.trim().isNotEmpty) {
+        final data = jsonDecode(response.body);
+        if (data != null && data['roles'] is List) {
+          List roles = data['roles'];
+          data['roles'] = roles.where((role) => role['role_id'] != defaultRoleId).toList();
+          return data;
+        }
       }
 
-      return data;
+      // Fallback: GET /serviceauth/roles
+      final resRoles = await http.get(Uri.parse('$baseUrl/roles'));
+      if (resRoles.statusCode == 200 && resRoles.body.trim().isNotEmpty) {
+        return jsonDecode(resRoles.body);
+      }
+
+      return null;
     } catch (error) {
       debugPrint("Erreur lors de la récupération des roles : $error");
       return null;
@@ -49,9 +55,17 @@ class RoleService {
     try {
       final response = await http.get(Uri.parse('$baseUrl/application/$appId'));
 
-      if (response.statusCode != 200) return null;
+      if (response.statusCode == 200 && response.body.trim().isNotEmpty) {
+        return jsonDecode(response.body);
+      }
 
-      return jsonDecode(response.body);
+      // Fallback: GET /serviceauth/roles
+      final resRoles = await http.get(Uri.parse('$baseUrl/roles'));
+      if (resRoles.statusCode == 200 && resRoles.body.trim().isNotEmpty) {
+        return jsonDecode(resRoles.body);
+      }
+
+      return null;
     } catch (error) {
       debugPrint("Erreur lors de la récupération des roles pour login : $error");
       return null;
@@ -60,15 +74,15 @@ class RoleService {
 
   static Future<dynamic> getAllRolesWithPermission() async {
     try {
-      // 1. GET /serviceauth/application/1 (contient les rôles configurés pour l'application)
+      // 1. GET /serviceauth/application/1
       final resApp = await http.get(Uri.parse('$baseUrl/application/$appId'));
-      if (resApp.statusCode >= 200 && resApp.statusCode < 300) {
+      if (resApp.statusCode >= 200 && resApp.statusCode < 300 && resApp.body.trim().isNotEmpty) {
         return jsonDecode(resApp.body);
       }
 
       // 2. GET /serviceauth/roles
       final resRoles = await http.get(Uri.parse('$baseUrl/roles'));
-      if (resRoles.statusCode >= 200 && resRoles.statusCode < 300) {
+      if (resRoles.statusCode >= 200 && resRoles.statusCode < 300 && resRoles.body.trim().isNotEmpty) {
         return jsonDecode(resRoles.body);
       }
 

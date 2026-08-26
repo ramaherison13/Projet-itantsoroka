@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 
 class NavBarWidget extends StatelessWidget {
   final bool isAuthenticated;
@@ -15,6 +16,15 @@ class NavBarWidget extends StatelessWidget {
     required this.onNavigate,
     this.onLinkClicked,
   });
+
+  String _translateText(BuildContext context, String key, String defaultText) {
+    if (key == '/') return context.tr('nav_bar.accueil');
+    if (key == '/monographie') return context.tr('nav_bar.monographie');
+    if (key == '/actualites') return context.tr('nav_bar.actualites');
+    if (key == '/offres-appui') return context.tr('nav_bar.offres');
+    if (key == '/officeprojet') return context.tr('nav_bar.projets');
+    return context.tr(defaultText);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +57,12 @@ class NavBarWidget extends StatelessWidget {
           if (isLargeScreen) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: _buildNavLinks(activeList, isDarkMode),
+              children: _buildNavLinks(context, activeList, isDarkMode),
             );
           } else {
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: _buildNavLinks(activeList, isDarkMode),
+              children: _buildNavLinks(context, activeList, isDarkMode),
             );
           }
         },
@@ -60,10 +70,11 @@ class NavBarWidget extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildNavLinks(List<Map<String, String>> list, bool isDarkMode) {
+  List<Widget> _buildNavLinks(BuildContext context, List<Map<String, String>> list, bool isDarkMode) {
     return list.map((link) {
       final to = link["to"]!;
-      final text = link["text"]!;
+      final rawText = link["text"]!;
+      final text = _translateText(context, to, rawText);
       final isActive = currentPath == to;
 
       return Padding(

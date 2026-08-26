@@ -189,25 +189,27 @@ class CitizensService {
   static String? getCitizenAvatarPreview(String? citizenPhoto) {
     if (citizenPhoto == null || citizenPhoto.trim().isEmpty) return null;
     final photo = citizenPhoto.trim();
+    if (photo == 'null' || photo == 'undefined' || photo == 'none') return null;
+
     const uploadBase = '${ApiConstants.gatewayBaseUrl}/serviceupload/file/preview';
 
-    if (photo.contains('/file/preview/hello%2F')) return photo;
+    if (photo.contains('/file/preview/')) return photo;
 
-    // Logique React : le chemin contient "hello/" comme dossier d'upload
-    // Ex: "https://gateway.tsirylab.com/serviceupload/file/hello/1762516242375-7def029b.jpeg" -> "/serviceupload/file/preview/hello%2F1762516242375-7def029b.jpeg"
-    if (photo.contains('hello')) {
-      final parts = photo.split('hello');
-      final afterHello = parts.length > 1 ? parts[1] : photo;
-      final encoded = afterHello.startsWith('/') ? "%2F${afterHello.substring(1)}" : afterHello.replaceFirst('/', '%2F');
-      return '$uploadBase/hello$encoded';
+    if (photo.contains('/file/')) {
+      final fileIndex = photo.indexOf('/file/');
+      final baseUrl = photo.substring(0, fileIndex);
+      final filePath = photo.substring(fileIndex + '/file/'.length);
+      final encodedPath = filePath.replaceAll('/', '%2F');
+      return '$baseUrl/file/preview/$encodedPath';
     }
 
-    // Déjà une autre URL complète HTTP
-    if (photo.startsWith('http://') || photo.startsWith('https://')) return photo;
+    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      return photo;
+    }
 
-    // Chemin relatif générique
     final clean = photo.startsWith('/') ? photo.substring(1) : photo;
-    return '$uploadBase/${Uri.encodeComponent(clean)}';
+    final encodedRelative = clean.replaceAll('/', '%2F');
+    return '$uploadBase/$encodedRelative';
   }
 
   /// Récupère l'URL de l'avatar avec une image par défaut en fallback

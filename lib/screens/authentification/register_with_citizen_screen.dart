@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:itantsoroka/constants/api_constants.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
+import 'package:itantsoroka/widgets/language_setting_widget.dart';
 
 class RegisterWithCitizenScreen extends StatefulWidget {
   final String citizenId;
@@ -39,7 +41,7 @@ class _RegisterWithCitizenScreenState extends State<RegisterWithCitizenScreen> {
     // Rediriger si pas d'id_citizen
     if (widget.citizenId.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showAlert("Erreur: Aucune identité citoyenne trouvée", Colors.red);
+        _showAlert(context.tr('register.err_no_citizen'), Colors.red);
         context.go('/auth/check-id-card');
       });
     }
@@ -82,7 +84,7 @@ class _RegisterWithCitizenScreenState extends State<RegisterWithCitizenScreen> {
       }
     } catch (error) {
       if (mounted) {
-        _showAlert("Impossible de charger la liste des communes", Colors.red);
+        _showAlert(context.tr('register.err_load_communes'), Colors.red);
       }
     } finally {
       if (mounted) {
@@ -95,27 +97,27 @@ class _RegisterWithCitizenScreenState extends State<RegisterWithCitizenScreen> {
 
   bool validateForm() {
     if (_pseudoController.text.trim().isEmpty) {
-      _showAlert("Le nom d'utilisateur est requis", Colors.red);
+      _showAlert(context.tr('register.err_pseudo_requis'), Colors.red);
       return false;
     }
     if (_emailController.text.trim().isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailController.text)) {
-      _showAlert("Veuillez entrer une adresse email valide", Colors.red);
+      _showAlert(context.tr('register.err_email_invalide'), Colors.red);
       return false;
     }
     if (_passwordController.text.length < 6) {
-      _showAlert("Le mot de passe doit contenir au moins 6 caractères", Colors.red);
+      _showAlert(context.tr('register.err_password_6_char'), Colors.red);
       return false;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
-      _showAlert("Les mots de passe ne correspondent pas", Colors.red);
+      _showAlert(context.tr('register.err_password_mismatch'), Colors.red);
       return false;
     }
     if (_phoneController.text.trim().isEmpty) {
-      _showAlert("Le numéro de téléphone est requis", Colors.red);
+      _showAlert(context.tr('register.err_phone_requis'), Colors.red);
       return false;
     }
     if (selectedMunicipalityId == null || selectedMunicipalityId!.isEmpty) {
-      _showAlert("Veuillez sélectionner une commune", Colors.red);
+      _showAlert(context.tr('register.err_commune_requis'), Colors.red);
       return false;
     }
     return true;
@@ -153,6 +155,9 @@ class _RegisterWithCitizenScreenState extends State<RegisterWithCitizenScreen> {
       loading = true;
     });
 
+    final msgSucces = context.tr('register.succes_connexion');
+    final msgErreur = context.tr('register.erreur_inscription');
+
     try {
       final payload = {
         "user_pseudo": _pseudoController.text.trim(),
@@ -172,7 +177,7 @@ class _RegisterWithCitizenScreenState extends State<RegisterWithCitizenScreen> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showAlert("Compte créé avec succès ! Vous pouvez maintenant vous connecter.", Colors.green);
+        _showAlert(msgSucces, Colors.green);
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
             context.go('/auth/login');
@@ -180,11 +185,11 @@ class _RegisterWithCitizenScreenState extends State<RegisterWithCitizenScreen> {
         });
       } else {
         final data = json.decode(response.body);
-        final errorMessage = data['message'] ?? data['error'] ?? "Une erreur s'est produite lors de l'inscription";
+        final errorMessage = data['message'] ?? data['error'] ?? msgErreur;
         _showAlert(errorMessage, Colors.red);
       }
     } catch (error) {
-      _showAlert("Une erreur s'est produite lors de l'inscription", Colors.red);
+      _showAlert(msgErreur, Colors.red);
     } finally {
       if (mounted) {
         setState(() {
@@ -218,261 +223,303 @@ class _RegisterWithCitizenScreenState extends State<RegisterWithCitizenScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 bool isWide = constraints.maxWidth > 700;
-                return Flex(
-                  direction: isWide ? Axis.horizontal : Axis.vertical,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Partie gauche (Illustration / Logo)
-                    if (isWide)
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(40),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              bottomLeft: Radius.circular(20),
-                            ),
-                            border: Border(right: BorderSide(color: Colors.grey.shade100)),
+
+                Widget leftPane = Container(
+                  padding: const EdgeInsets.all(40),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
+                    ),
+                    border: Border(right: BorderSide(color: Colors.grey.shade100)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        context.tr('register.titre'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.black87),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        context.tr('register.completez_profil'),
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 32),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Image.asset('assets/images/logo_dd_v3.png', width: 180, fit: BoxFit.contain),
+                      ),
+                    ],
+                  ),
+                );
+
+                Widget formWidget = Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: const [
+                            LanguageSettingWidget(),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (!isWide) ...[
+                          Center(
+                            child: Image.asset('assets/images/logo_dd_v3.png', width: 140, fit: BoxFit.contain),
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Étapes visuelles
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Text("✓", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            Container(width: 32, height: 4, color: Colors.green),
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Text("2", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        Text(
+                          context.tr('register.completez_profil'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          context.tr('register.remplissez_infos'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Nom d'utilisateur
+                        _buildTextField(
+                          controller: _pseudoController,
+                          label: context.tr('register.pseudo'),
+                          hint: context.tr('register.pseudo_hint'),
+                          icon: Icons.person_outline,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Email
+                        _buildTextField(
+                          controller: _emailController,
+                          label: context.tr('register.email'),
+                          hint: "votre.email@example.com",
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Téléphone
+                        _buildTextField(
+                          controller: _phoneController,
+                          label: context.tr('register.telephone'),
+                          hint: "0XX XX XXX XX",
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Commune (Dropdown)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(context.tr('register.commune'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300, width: 2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.location_on_outlined, color: Colors.grey),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: selectedMunicipalityId,
+                                        hint: Text(loadingTerritories ? context.tr('register.chargement') : context.tr('register.select_commune')),
+                                        isExpanded: true,
+                                        items: territories.map((territory) {
+                                          final id = territory['formatted_id']?.toString() ?? '';
+                                          final name = territory['name'] ?? territory['nom'] ?? '';
+                                          return DropdownMenuItem<String>(
+                                            value: id,
+                                            child: Text(name),
+                                          );
+                                        }).toList(),
+                                        onChanged: loadingTerritories
+                                            ? null
+                                            : (val) {
+                                                setState(() {
+                                                  selectedMunicipalityId = val;
+                                                });
+                                              },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Mot de passe
+                        _buildPasswordField(
+                          controller: _passwordController,
+                          label: context.tr('register.mot_de_passe'),
+                          show: showPassword,
+                          onToggle: () => setState(() => showPassword = !showPassword),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Confirmation mot de passe
+                        _buildPasswordField(
+                          controller: _confirmPasswordController,
+                          label: context.tr('register.confirmer_pass'),
+                          show: showConfirmPassword,
+                          onToggle: () => setState(() => showConfirmPassword = !showConfirmPassword),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Boutons d'action
+                        if (isWide)
+                          Row(
                             children: [
-                              const Text(
-                                "Créer votre compte",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.black87),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                "Complétez votre inscription",
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
-                              ),
-                              const SizedBox(height: 32),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey.shade600,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                 ),
-                                child: Image.asset('assets/images/logo_dd_v3.png', width: 180, fit: BoxFit.contain),
+                                onPressed: () => context.go('/auth/check-id-card'),
+                                icon: const Icon(Icons.arrow_back, size: 20),
+                                label: Text(context.tr('register.btn_retour')),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF098E00),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  ),
+                                  onPressed: loading ? null : handleSubmit,
+                                  child: loading
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        )
+                                      : Text(context.tr('register.btn_creer_mon_compte'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ),
                               ),
                             ],
-                          ),
-                        ),
-                      ),
-
-                    // Partie droite - Formulaire
-                    Expanded(
-                      flex: isWide ? 1 : 0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
+                          )
+                        else
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (!isWide) ...[
-                                Center(
-                                  child: Image.asset('assets/images/logo_dd_v3.png', width: 140, fit: BoxFit.contain),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF098E00),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                 ),
-                                const SizedBox(height: 16),
-                              ],
-
-                              // Étapes visuelles
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.green,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: Text("✓", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                    ),
-                                  ),
-                                  Container(width: 32, height: 4, color: Colors.green),
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.shade100,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: Text("2", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                                    ),
-                                  ),
-                                ],
+                                onPressed: loading ? null : handleSubmit,
+                                child: loading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      )
+                                    : Text(context.tr('register.btn_creer_mon_compte'), style: const TextStyle(fontWeight: FontWeight.bold)),
                               ),
-                              const SizedBox(height: 24),
-
-                              const Text(
-                                "Complétez votre profil",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                "Remplissez les informations ci-dessous",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Nom d'utilisateur
-                              _buildTextField(
-                                controller: _pseudoController,
-                                label: "Nom d'utilisateur",
-                                hint: "Votre nom d'utilisateur",
-                                icon: Icons.person_outline,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Email
-                              _buildTextField(
-                                controller: _emailController,
-                                label: "Email",
-                                hint: "votre.email@example.com",
-                                icon: Icons.email_outlined,
-                                keyboardType: TextInputType.emailAddress,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Téléphone
-                              _buildTextField(
-                                controller: _phoneController,
-                                label: "Téléphone",
-                                hint: "0XX XX XXX XX",
-                                icon: Icons.phone_outlined,
-                                keyboardType: TextInputType.phone,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Commune (Dropdown)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("Commune", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey.shade300, width: 2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.location_on_outlined, color: Colors.grey),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: DropdownButtonHideUnderline(
-                                            child: DropdownButton<String>(
-                                              value: selectedMunicipalityId,
-                                              hint: Text(loadingTerritories ? "Chargement..." : "Sélectionnez votre commune"),
-                                              isExpanded: true,
-                                              items: territories.map((territory) {
-                                                final id = territory['formatted_id']?.toString() ?? '';
-                                                final name = territory['name'] ?? territory['nom'] ?? '';
-                                                return DropdownMenuItem<String>(
-                                                  value: id,
-                                                  child: Text(name),
-                                                );
-                                              }).toList(),
-                                              onChanged: loadingTerritories
-                                                  ? null
-                                                  : (val) {
-                                                      setState(() {
-                                                        selectedMunicipalityId = val;
-                                                      });
-                                                    },
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Mot de passe
-                              _buildPasswordField(
-                                controller: _passwordController,
-                                label: "Mot de passe",
-                                show: showPassword,
-                                onToggle: () => setState(() => showPassword = !showPassword),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Confirmation mot de passe
-                              _buildPasswordField(
-                                controller: _confirmPasswordController,
-                                label: "Confirmer le mot de passe",
-                                show: showConfirmPassword,
-                                onToggle: () => setState(() => showConfirmPassword = !showConfirmPassword),
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Boutons d'action
-                              Flex(
-                                direction: isWide ? Axis.horizontal : Axis.vertical,
-                                children: [
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.grey.shade600,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                                    ),
-                                    onPressed: () => context.go('/auth/check-id-card'),
-                                    icon: const Icon(Icons.arrow_back, size: 20),
-                                    label: const Text("Retour"),
-                                  ),
-                                  if (isWide) const SizedBox(width: 16) else const SizedBox(height: 12),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF098E00),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                                      ),
-                                      onPressed: loading ? null : handleSubmit,
-                                      child: loading
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                            )
-                                          : const Text("Créer mon compte", style: TextStyle(fontWeight: FontWeight.bold)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Lien connexion
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Text("Vous avez déjà un compte ? ", style: TextStyle(color: Colors.grey)),
-                                  GestureDetector(
-                                    onTap: () => context.go('/auth/login'),
-                                    child: const Text("Se connecter", style: TextStyle(color: Color(0xFF098E00), fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey.shade600,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                ),
+                                onPressed: () => context.go('/auth/check-id-card'),
+                                icon: const Icon(Icons.arrow_back, size: 20),
+                                label: Text(context.tr('register.btn_retour')),
                               ),
                             ],
                           ),
+                        const SizedBox(height: 24),
+
+                        // Lien connexion
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("${context.tr('register.deja_compte')} ", style: const TextStyle(color: Colors.grey)),
+                            GestureDetector(
+                              onTap: () => context.go('/auth/login'),
+                              child: Text(context.tr('register.se_connecter'), style: const TextStyle(color: Color(0xFF098E00), fontWeight: FontWeight.bold)),
+                            ),
+                          ],
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 );
+
+                if (isWide) {
+                  return IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: leftPane),
+                        Expanded(child: formWidget),
+                      ],
+                    ),
+                  );
+                } else {
+                  return formWidget;
+                }
               },
             ),
           ),

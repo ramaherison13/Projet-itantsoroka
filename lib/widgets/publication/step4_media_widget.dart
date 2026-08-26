@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 
 class UploadedFileModel {
   final String id;
@@ -92,12 +93,12 @@ class _Step4MediaWidgetState extends State<Step4MediaWidget> {
 
       setState(() {
         _uploadedFiles.addAll(newFiles);
-        // On envoie au parent la liste des fichiers bruts ou modèles
         widget.onChange(
           'files',
           _uploadedFiles.map((f) => f.file).toList(),
         );
       });
+      await _handleSubmit();
     }
   }
 
@@ -109,6 +110,7 @@ class _Step4MediaWidgetState extends State<Step4MediaWidget> {
         _uploadedFiles.map((f) => f.file).toList(),
       );
     });
+    _handleSubmit();
   }
 
   String _formatFileSize(int bytes) {
@@ -122,9 +124,35 @@ class _Step4MediaWidgetState extends State<Step4MediaWidget> {
   }
 
   Future<void> _handleSubmit() async {
-    // Exemple d'envoi simulation
-    debugPrint("Envoi de ${_uploadedFiles.length} fichiers...");
-    // TODO: Implémenter l'appel API MultipartRequest
+    debugPrint("Préparation de ${_uploadedFiles.length} fichiers pour MultipartRequest...");
+    try {
+      final List<http.MultipartFile> multipartFiles = [];
+      for (var model in _uploadedFiles) {
+        final platformFile = model.file;
+        if (platformFile is PlatformFile) {
+          if (platformFile.bytes != null) {
+            multipartFiles.add(
+              http.MultipartFile.fromBytes(
+                'files',
+                platformFile.bytes!,
+                filename: platformFile.name,
+              ),
+            );
+          } else if (platformFile.path != null && platformFile.path!.isNotEmpty) {
+            multipartFiles.add(
+              await http.MultipartFile.fromPath(
+                'files',
+                platformFile.path!,
+                filename: platformFile.name,
+              ),
+            );
+          }
+        }
+      }
+      widget.onChange('multipart_files', multipartFiles);
+    } catch (e) {
+      debugPrint("Erreur de préparation des fichiers MultipartRequest: $e");
+    }
   }
 
   @override
