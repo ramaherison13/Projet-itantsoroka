@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'l10n/app_localization.dart';
 import 'routes/app_router.dart';
 import 'providers/theme_provider.dart';
+import 'providers/auth_provider.dart';
+import 'providers/language_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,32 +19,21 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
       child: const MyApp(),
     ),
   );
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  // Langue par défaut (français)
-  Locale _locale = const Locale('fr', 'FR');
-
-  void setLocale(Locale newLocale) {
-    setState(() {
-      _locale = newLocale;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
 
     return MaterialApp.router(
       title: 'Itantsoroka',
@@ -74,13 +65,15 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       themeMode: themeProvider.themeMode,
-      locale: _locale,
+      locale: languageProvider.locale,
       supportedLocales: const [
         Locale('fr', 'FR'),
         Locale('mg', 'MG'),
       ],
       localizationsDelegates: const [
         AppLocalization.delegate,
+        AppLocalization.materialDelegate,
+        AppLocalization.cupertinoDelegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,

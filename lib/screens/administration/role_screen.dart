@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/core/admin_theme.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 import 'package:itantsoroka/services/role_service.dart';
 import 'package:itantsoroka/widgets/administration/role_form_modal_widget.dart';
 import 'package:itantsoroka/widgets/administration/role_detail_modal_widget.dart';
@@ -323,7 +324,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Rôles & Permissions',
+                      context.tr('roles_gestion_titre'),
                       style: TextStyle(
                         fontSize: isMobile ? 14 : 16,
                         fontWeight: FontWeight.bold,
@@ -333,7 +334,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     Text(
-                      '${roles.length} rôle${roles.length != 1 ? 's' : ''} enregistré${roles.length != 1 ? 's' : ''}',
+                      '${roles.length} ${context.tr('roles_enregistres')}',
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark
@@ -353,7 +354,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
                         : AdminTheme.textSecondary,
                     size: 20),
                 onPressed: loading ? null : fetchRoles,
-                tooltip: 'Actualiser',
+                tooltip: context.tr('actualiser'),
               ),
 
               // Bouton Créer
@@ -372,8 +373,8 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: isMobile
                     ? const SizedBox.shrink()
-                    : const Text('Créer',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    : Text(context.tr('creer'),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -459,7 +460,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
         AdminTheme.horizontalPadding(context),
         12,
         AdminTheme.horizontalPadding(context),
-        hasSelectedRole ? 100 : 24,
+        hasSelectedRole ? 120 : 100,
       ),
       itemCount: roles.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
@@ -675,7 +676,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
                 backgroundColor: AdminTheme.primary),
             onPressed: _openCreateModal,
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Créer un rôle'),
+            label: Text('${context.tr('creer')} ${context.tr('roles_gestion_titre').split(' ').first.toLowerCase()}'),
           ),
         ],
       ),
@@ -795,7 +796,7 @@ class _RoleTableRowState extends State<_RoleTableRow> {
               Expanded(
                 flex: 2,
                 child: AdminTheme.badge(
-                    '${widget.permCount} permission${widget.permCount != 1 ? 's' : ''}',
+                    '${widget.permCount} ${context.tr('roles_permissions')}',
                     AdminTheme.purple),
               ),
 
@@ -803,7 +804,7 @@ class _RoleTableRowState extends State<_RoleTableRow> {
               Expanded(
                 flex: 2,
                 child: AdminTheme.badge(
-                    '${widget.userCount} utilisateur${widget.userCount != 1 ? 's' : ''}',
+                    '${widget.userCount} ${context.tr(widget.userCount != 1 ? 'roles_utilisateurs' : 'roles_utilisateur')}',
                     AdminTheme.info),
               ),
 

@@ -19,7 +19,7 @@ class UserService {
   static const int appId = 1;
   static const int defaultRoleId = 0;
 
-  static const Set<String> _invalidCitizenIds = {
+  static final Set<String> _invalidCitizenIds = {
     "",
     "00000000-0000-0000-0000-000000000000",
     "550e8400-e29b-41d4-a716-446655440000",
@@ -148,13 +148,21 @@ class UserService {
       if (u is! Map) return {'user': u, 'citoyen': null, 'appUserRoles': []};
 
       dynamic userObj = u['user'] is Map ? u['user'] : u;
-      dynamic citoyenObj = u['citoyen'] is Map ? u['citoyen'] : (u['citizen'] is Map ? u['citizen'] : null);
+      dynamic citoyenObj = u['citoyen'] is Map
+          ? u['citoyen']
+          : (u['citizen'] is Map
+              ? u['citizen']
+              : (userObj is Map && userObj['citoyen'] is Map
+                  ? userObj['citoyen']
+                  : (userObj is Map && userObj['citizen'] is Map
+                      ? userObj['citizen']
+                      : null)));
 
       final citizenId = userObj['id_citizen'] ?? userObj['citizen_id'] ?? u['id_citizen'] ?? u['citizen_id'];
       final cinNumber = citoyenObj?['citizen_national_card_number'] ?? userObj['user_cin'] ?? userObj['cin'] ?? u['user_cin'] ?? u['cin'];
       final userId = userObj['user_id'] ?? userObj['id_user'] ?? userObj['id'] ?? u['user_id'] ?? u['id_user'];
 
-      // Si le citoyen n'est pas encore présent, tenter de le récupérer
+      // Si le citoyen n'est pas encore présent ou s'il est null dans la réponse API
       if (citoyenObj == null) {
         // 1. Essayer avec citizenId (UUID) sur servicecitoyen
         if (citizenId != null && !_invalidCitizenIds.contains(citizenId.toString())) {
@@ -171,8 +179,12 @@ class UserService {
               } else if (body is List && body.isNotEmpty) {
                 citoyenObj = body.first;
               }
+            } else if (res.statusCode >= 400) {
+              _invalidCitizenIds.add(citizenId.toString());
             }
-          } catch (_) {}
+          } catch (_) {
+            _invalidCitizenIds.add(citizenId.toString());
+          }
         }
 
         // 2. Si toujours nul, essayer avec le numéro de CIN (Card ID) sur servicecitoyen
@@ -216,6 +228,10 @@ class UserService {
             }
           } catch (_) {}
         }
+      }
+
+      if (citizenId != null && citoyenObj == null) {
+        _invalidCitizenIds.add(citizenId.toString());
       }
 
       return {
@@ -354,33 +370,7 @@ class UserService {
         return roles.any((r) => r['role'] != null && r['role']['role_slug'] == roleSlug);
       }).toList();
 
-      List<Map<String, dynamic>> usersWithCitizens = [];
-
-      for (var user in filteredUsers) {
-        final citizenId = user['id_citizen'] ?? user['citizen_id'];
-
-        if (citizenId == null || _invalidCitizenIds.contains(citizenId.toString())) {
-          usersWithCitizens.add({'user': user, 'citoyen': null});
-        } else {
-          try {
-            final citizenResponse = await http.get(
-              Uri.parse('$citizenBaseUrl/citizens/getCitizenById/$citizenId'),
-            );
-
-            dynamic citoyenData;
-            if (citizenResponse.statusCode >= 200 && citizenResponse.statusCode < 300) {
-              citoyenData = jsonDecode(citizenResponse.body);
-            }
-
-            usersWithCitizens.add({'user': user, 'citoyen': citoyenData});
-          } catch (error) {
-            if (kDebugMode) {
-              debugPrint("Impossible de récupérer les informations citoyen pour $citizenId");
-            }
-            usersWithCitizens.add({'user': user, 'citoyen': null});
-          }
-        }
-      }
+      List<Map<String, dynamic>> usersWithCitizens = await enrichUsersWithCitizens(filteredUsers);
 
       usersWithCitizens.sort((a, b) {
         final dateA = a['citoyen']?['created_at'] != null

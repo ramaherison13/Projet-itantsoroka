@@ -126,6 +126,7 @@ class SoumissionActe extends StatefulWidget {
   });
 
   @override
+  // ignore: library_private_types_in_public_api
   _SoumissionActeState createState() => _SoumissionActeState();
 }
 

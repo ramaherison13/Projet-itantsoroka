@@ -73,8 +73,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final String apiUrl = ApiConstants.gatewayBaseUrl;
 
   void _showAlert(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color, duration: const Duration(seconds: 4)),
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              color == Colors.green || color == Colors.green.shade600
+                  ? Icons.check_circle_rounded
+                  : Icons.error_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: color,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 6,
+      ),
     );
   }
 

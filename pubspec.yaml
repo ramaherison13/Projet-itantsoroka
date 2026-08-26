@@ -34,7 +34,6 @@ dependencies:
   url_launcher: any
   webview_flutter: ^4.10.0
 dev_dependencies:
-  web: any
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0

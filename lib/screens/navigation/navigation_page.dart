@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/core/admin_theme.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 
 // -----------------------------------------------------------------------------
 // MODÈLE DE DONNÉES
@@ -378,7 +379,7 @@ class NavigationPageState extends State<NavigationPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isMobile ? 'Navigation' : 'Gestion de la Navigation',
+                            context.tr('nav_gestion_titre'),
                             style: TextStyle(
                               fontSize: isMobile ? 16 : 18,
                               fontWeight: FontWeight.bold,
@@ -388,7 +389,7 @@ class NavigationPageState extends State<NavigationPage> {
                           ),
                           if (!isMobile)
                             Text(
-                              'Paramétrer et structurer les menus et itinéraires applicatifs.',
+                              context.tr('nav_gestion_sous_titre'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isDark ? AdminTheme.textSecondaryDark : AdminTheme.textSecondary,
@@ -404,7 +405,7 @@ class NavigationPageState extends State<NavigationPage> {
                         size: 20,
                       ),
                       onPressed: _fetchNavigation,
-                      tooltip: 'Actualiser',
+                      tooltip: context.tr('actualiser'),
                     ),
                     const SizedBox(width: 4),
                     FilledButton.icon(
@@ -419,7 +420,7 @@ class NavigationPageState extends State<NavigationPage> {
                       icon: const Icon(Icons.add_rounded, size: 18),
                       label: isMobile
                           ? const SizedBox.shrink()
-                          : const Text("Ajouter", style: TextStyle(fontWeight: FontWeight.bold)),
+                          : Text(context.tr('nav_ajouter'), style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -664,13 +665,13 @@ class NavigationPageState extends State<NavigationPage> {
             fontWeight: FontWeight.bold,
             color: Color(0xFF6B7280),
           ),
-          columns: const [
-            DataColumn(label: Text("ORDRE")),
-            DataColumn(label: Text("LABEL")),
-            DataColumn(label: Text("CHEMIN")),
-            DataColumn(label: Text("CATÉGORIE")),
-            DataColumn(label: Text("STATUT")),
-            DataColumn(label: Text("RÔLES REQUIS")),
+          columns: [
+            DataColumn(label: Text(context.tr('nav_ordre'))),
+            DataColumn(label: Text(context.tr('nav_label'))),
+            DataColumn(label: Text(context.tr('nav_chemin'))),
+            DataColumn(label: Text(context.tr('nav_categorie'))),
+            DataColumn(label: Text(context.tr('nav_statut'))),
+            DataColumn(label: Text(context.tr('nav_roles_requis'))),
             DataColumn(label: Text("ACTION")),
           ],
           rows: items.map((item) {

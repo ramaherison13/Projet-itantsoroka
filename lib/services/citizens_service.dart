@@ -71,6 +71,12 @@ class CitizensService {
   static const String baseUrl = "https://gateway.tsirylab.com/servicecitoyen";
   static const String authBaseUrl = "https://gateway.tsirylab.com/serviceauth";
 
+  static final Set<String> _invalidCitizenIds = {
+    "",
+    "00000000-0000-0000-0000-000000000000",
+    "550e8400-e29b-41d4-a716-446655440000",
+  };
+
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -91,13 +97,20 @@ class CitizensService {
 
   /// Récupère les informations d'un citoyen à partir de son ID citoyen
   static Future<CitizenModel?> getCitizenById(String citizenId) async {
+    final cleanId = citizenId.trim();
+    if (cleanId.isEmpty || _invalidCitizenIds.contains(cleanId)) {
+      return null;
+    }
     try {
-      final res = await http.get(Uri.parse('$baseUrl/citizens/getCitizenById/$citizenId'), headers: defaultHeaders).timeout(const Duration(seconds: 5));
+      final res = await http.get(Uri.parse('$baseUrl/citizens/getCitizenById/$cleanId'), headers: defaultHeaders).timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         return CitizenModel.fromJson(jsonDecode(res.body));
+      } else if (res.statusCode >= 400) {
+        _invalidCitizenIds.add(cleanId);
       }
       return null;
     } catch (error) {
+      _invalidCitizenIds.add(cleanId);
       debugPrint("Erreur lors de la récupération du citoyen $citizenId: $error");
       return null;
     }
@@ -110,18 +123,26 @@ class CitizensService {
       if (userRes.statusCode < 200 || userRes.statusCode >= 300) return null;
 
       final userData = jsonDecode(userRes.body);
+
+      // Si le citoyen est directement embarqué dans userData
+      if (userData is Map) {
+        final embeddedCitizen = userData['citizen'] ?? userData['citoyen'];
+        if (embeddedCitizen is Map) {
+          return CitizenModel.fromJson(Map<String, dynamic>.from(embeddedCitizen));
+        }
+      }
+
       if (userData == null || userData['id_citizen'] == null) {
         debugPrint("Utilisateur $userId n'a pas d'id_citizen associé");
         return null;
       }
 
-      final idCitizen = userData['id_citizen'];
-      final citizenRes = await http.get(Uri.parse('$baseUrl/citizens/getCitizenById/$idCitizen'), headers: defaultHeaders).timeout(const Duration(seconds: 5));
-      
-      if (citizenRes.statusCode == 200) {
-        return CitizenModel.fromJson(jsonDecode(citizenRes.body));
+      final idCitizen = userData['id_citizen']?.toString();
+      if (idCitizen == null || _invalidCitizenIds.contains(idCitizen)) {
+        return null;
       }
-      return null;
+
+      return await getCitizenById(idCitizen);
     } catch (error) {
       debugPrint("Erreur lors de la récupération du citoyen pour l'utilisateur $userId: $error");
       return null;
@@ -131,20 +152,25 @@ class CitizensService {
   /// Récupère les informations d'un citoyen à partir d'un ID qui peut être soit un citizen_id, soit un user_id
   static Future<CitizenModel?> getCitizenByIdOrUserId(String id) async {
     try {
-      final citizenResult = await getCitizenById(id);
+      final cleanId = id.trim();
+      if (_invalidCitizenIds.contains(cleanId)) {
+        return await getCitizenByUserId(cleanId);
+      }
+
+      final citizenResult = await getCitizenById(cleanId);
       if (citizenResult != null) {
-        debugPrint("✅ Citoyen trouvé directement avec citizen_id $id");
+        debugPrint("✅ Citoyen trouvé directement avec citizen_id $cleanId");
         return citizenResult;
       }
 
-      debugPrint("🔄 Tentative de récupération avec user_id $id");
-      final userResult = await getCitizenByUserId(id);
+      debugPrint("🔄 Tentative de récupération avec user_id $cleanId");
+      final userResult = await getCitizenByUserId(cleanId);
       if (userResult != null) {
-        debugPrint("✅ Citoyen trouvé via user_id $id");
+        debugPrint("✅ Citoyen trouvé via user_id $cleanId");
         return userResult;
       }
 
-      debugPrint("⚠️ Aucun citoyen trouvé pour l'ID $id (ni comme citizen_id, ni comme user_id)");
+      debugPrint("⚠️ Aucun citoyen trouvé pour l'ID $cleanId (ni comme citizen_id, ni comme user_id)");
       return null;
     } catch (error) {
       debugPrint("❌ Erreur lors de la récupération du citoyen pour l'ID $id: $error");

@@ -45,22 +45,60 @@ class TokenPayload {
   });
 
   factory TokenPayload.fromJson(Map<String, dynamic> json) {
-    var rolesList = (json['roles'] as List?)?.map((r) => Role.fromJson(r)).toList() ?? [];
+    var rolesList = <Role>[];
+    if (json['roles'] is List) {
+      rolesList = (json['roles'] as List).map((r) {
+        if (r is Map<String, dynamic>) {
+          return Role.fromJson(r);
+        } else if (r is String) {
+          return Role(roleSlug: r, roleId: 0);
+        }
+        return Role(roleSlug: r.toString(), roleId: 0);
+      }).toList();
+    } else if (json['appUserRoles'] is List) {
+      rolesList = (json['appUserRoles'] as List).map((ur) {
+        if (ur is Map) {
+          final slug = ur['role']?['role_slug'] ?? ur['role_slug'] ?? '';
+          return Role(roleSlug: slug.toString(), roleId: ur['role_id'] ?? 0);
+        }
+        return Role(roleSlug: ur.toString(), roleId: 0);
+      }).toList();
+    }
+
+    final id = json['user_id']?.toString() ??
+        json['id']?.toString() ??
+        json['userId']?.toString() ??
+        json['sub']?.toString() ??
+        '';
+    final email = json['user_email']?.toString() ??
+        json['email']?.toString() ??
+        json['userEmail']?.toString() ??
+        '';
+    final pseudo = json['user_pseudo']?.toString() ??
+        json['pseudo']?.toString() ??
+        json['username']?.toString() ??
+        json['userPseudo']?.toString() ??
+        '';
+
     return TokenPayload(
-      userId: json['user_id'] ?? '',
-      userEmail: json['user_email'] ?? '',
-      userPseudo: json['user_pseudo'] ?? '',
+      userId: id,
+      userEmail: email,
+      userPseudo: pseudo,
       roles: rolesList,
-      municipalityName: json['municipality_name'] ?? '',
-      municipalityId: json['municipality_id'],
-      districtId: json['district_id'],
-      exp: json['exp'] ?? 0,
-      iat: json['iat'] ?? 0,
+      municipalityName: json['municipality_name']?.toString() ?? json['commune']?.toString() ?? '',
+      municipalityId: json['municipality_id']?.toString(),
+      districtId: json['district_id']?.toString(),
+      exp: json['exp'] is int ? json['exp'] : 0,
+      iat: json['iat'] is int ? json['iat'] : 0,
     );
   }
 }
 
 class AuthProvider with ChangeNotifier {
+  AuthProvider() {
+    restoreSession();
+  }
+
   String? _accessToken;
   TokenPayload? _user;
   bool _isAuthenticated = false;
@@ -77,6 +115,45 @@ class AuthProvider with ChangeNotifier {
   String get userName => _user?.userPseudo ?? 'Utilisateur';
   String get userEmail => _user?.userEmail ?? '';
 
+  static String normalizeRoleSlug(String slug) {
+    return slug.trim().toUpperCase().replaceAll('-', '_').replaceAll(' ', '_');
+  }
+
+  /// Liste des slugs de rôles de l'utilisateur (normalisés en majuscules sans tirets/espaces)
+  List<String> get roleSlugs =>
+      _user?.roles
+          .map((r) => normalizeRoleSlug(r.roleSlug))
+          .where((s) => s.isNotEmpty)
+          .toList() ??
+      [];
+
+  /// Rôle principal (premier rôle trouvé dans le token)
+  String? get primaryRole => roleSlugs.isNotEmpty ? roleSlugs.first : null;
+
+  /// Vérifie si l'utilisateur possède un rôle donné (insensible à la casse, tirets et espaces)
+  bool hasRole(String slug) =>
+      roleSlugs.contains(normalizeRoleSlug(slug));
+
+  /// Vérifie si l'utilisateur possède au moins un des rôles donnés
+  bool hasAnyRole(List<String> slugs) =>
+      slugs.any((s) => hasRole(s));
+
+  /// Route d'accueil selon le rôle principal
+  String get homeRoute {
+    if (!_isAuthenticated || _user == null) return '/';
+    if (hasRole('SUPER_ADMIN') || hasRole('ADMIN') || hasRole('ADMINISTRATEUR')) {
+      return '/admin';
+    }
+    if (hasRole('CHEF_DISTRICT'))    return '/dashboard/chef-district';
+    if (hasRole('ADJOINT_DISTRICT')) return '/dashboard/adjoint-district';
+    if (hasRole('STD'))              return '/dashboard/std';
+    if (hasRole('CTD'))              return '/dashboard/ctd';
+    if (hasRole('PARTENAIRE'))       return '/dashboard/partenaire';
+    // Citoyen ou rôle inconnu → page d'accueil publique
+    return '/';
+  }
+
+
   Future<void> login(String payloadString) async {
     try {
       final data = jsonDecode(payloadString);
@@ -89,14 +166,31 @@ class AuthProvider with ChangeNotifier {
       await prefs.setBool('isActivated', _isActivated);
 
       try {
-        // Décodage JWT (vous pouvez utiliser une bibliothèque comme `jwt_decode` pour Flutter)
-        // Map<String, dynamic> decodedMap = JwtDecoder.decode(token);
-        // _user = TokenPayload.fromJson(decodedMap);
-        // await prefs.setString('roles', jsonEncode(_user?.roles));
+        String resolvedToken = token;
+        try {
+          final parsed = jsonDecode(token);
+          if (parsed is String && parsed.trim().isNotEmpty) {
+            resolvedToken = parsed.trim();
+          } else if (parsed is Map) {
+            final candidate = parsed['access_token'] ?? parsed['token'];
+            if (candidate is String && candidate.trim().isNotEmpty) {
+              resolvedToken = candidate.trim();
+            }
+          }
+        } catch (_) {}
+
+        if (resolvedToken.isNotEmpty) {
+          final parts = resolvedToken.split('.');
+          if (parts.length > 1) {
+            final normalized = base64Url.normalize(parts[1]);
+            final payload = jsonDecode(utf8.decode(base64Url.decode(normalized)));
+            _user = TokenPayload.fromJson(Map<String, dynamic>.from(payload));
+          }
+        }
         _isAuthenticated = true;
       } catch (e) {
-        _user = null;
-        _accessToken = null;
+        debugPrint("AuthProvider: error parsing JWT during login: $e");
+        _isAuthenticated = true;
       }
       _isInitialized = true;
       notifyListeners();

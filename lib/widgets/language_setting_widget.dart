@@ -1,78 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 class LanguageSettingWidget extends StatelessWidget {
-  final String currentLang;
-  final ValueChanged<String?> onLanguageChanged;
-
-  const LanguageSettingWidget({
-    super.key,
-    required this.currentLang,
-    required this.onLanguageChanged,
-  });
+  const LanguageSettingWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final currentLang = languageProvider.currentLanguageCode;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode ? Colors.white12 : Colors.grey.shade300,
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(4),
-            onHover: (hovering) {},
-            onTap: () {},
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.language,
-                  size: 18,
-                  color: isDarkMode ? Colors.grey.shade100 : Colors.black87,
-                ),
-                const SizedBox(width: 4),
-                DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: currentLang,
-                    dropdownColor: isDarkMode ? Colors.grey.shade800 : Colors.white,
-                    icon: const SizedBox.shrink(),
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.grey.shade100 : Colors.black,
-                      fontSize: 14,
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'fr',
-                        child: Text(
-                          // On peut adapter l'affichage selon l'espace ou utiliser un LayoutBuilder pour simuler mobile/desktop
-                          "Français",
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.grey.shade100 : Colors.black,
-                          ),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: 'mg',
-                        child: Text(
-                          "Malagasy",
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.grey.shade100 : Colors.black,
-                          ),
-                        ),
-                      ),
-                    ],
-                    onChanged: onLanguageChanged,
-                  ),
-                ),
-              ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentLang,
+          dropdownColor: isDarkMode ? const Color(0xFF1F2937) : Colors.white,
+          icon: Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Icon(
+              Icons.arrow_drop_down,
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+              size: 20,
             ),
           ),
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black87,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          items: [
+            DropdownMenuItem(
+              value: 'fr',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🇫🇷 ', style: TextStyle(fontSize: 14)),
+                  Text(
+                    "Français",
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            DropdownMenuItem(
+              value: 'mg',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🇲🇬 ', style: TextStyle(fontSize: 14)),
+                  Text(
+                    "Malagasy",
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          onChanged: (String? newLang) {
+            if (newLang != null) {
+              languageProvider.setLanguage(newLang);
+            }
+          },
         ),
       ),
     );

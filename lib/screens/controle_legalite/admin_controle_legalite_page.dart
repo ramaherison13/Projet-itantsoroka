@@ -80,6 +80,7 @@ class AdminControleLegalitePage extends StatefulWidget {
   });
 
   @override
+  // ignore: library_private_types_in_public_api
   _AdminControleLegalitePageState createState() => _AdminControleLegalitePageState();
 }
 
@@ -127,6 +128,7 @@ class ActListView extends StatefulWidget {
   });
 
   @override
+  // ignore: library_private_types_in_public_api
   _ActListViewState createState() => _ActListViewState();
 }
 
@@ -633,6 +635,7 @@ class ActDetailsView extends StatefulWidget {
   const ActDetailsView({super.key, required this.actId, required this.baseUrl, required this.onBack});
 
   @override
+  // ignore: library_private_types_in_public_api
   _ActDetailsViewState createState() => _ActDetailsViewState();
 }
 

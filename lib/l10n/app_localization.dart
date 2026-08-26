@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app_fr_translations.dart';
 import 'app_mg_translations.dart';
 
@@ -11,21 +13,21 @@ class AppLocalization {
   }
 
   static const LocalizationsDelegate<AppLocalization> delegate = _AppLocalizationDelegate();
+  static const LocalizationsDelegate<MaterialLocalizations> materialDelegate = _MgMaterialLocalizationsDelegate();
+  static const LocalizationsDelegate<CupertinoLocalizations> cupertinoDelegate = _MgCupertinoLocalizationsDelegate();
 
   late Map<String, dynamic> _localizedStrings;
 
   Future<bool> load() async {
-    // Charger les traductions selon la locale
     if (locale.languageCode == 'mg') {
-      _localizedStrings = malagasyTranslations; // Assurez-vous d'importer malagasyTranslations
+      _localizedStrings = malagasyTranslations;
     } else {
-      _localizedStrings = frenchTranslations; // Assurez-vous d'importer frenchTranslations
+      _localizedStrings = frenchTranslations;
     }
     return true;
   }
 
   String translate(String key) {
-    // Gérer les clés imbriquées si nécessaire (ex: "nav_bar.doleance")
     if (key.contains('.')) {
       List<String> parts = key.split('.');
       dynamic current = _localizedStrings;
@@ -59,7 +61,36 @@ class _AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {
   bool shouldReload(_AppLocalizationDelegate old) => false;
 }
 
-// Extension pour faciliter l'appel dans les widgets (ex: context.tr('welcome'))
+class _MgMaterialLocalizationsDelegate extends LocalizationsDelegate<MaterialLocalizations> {
+  const _MgMaterialLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => locale.languageCode == 'mg';
+
+  @override
+  Future<MaterialLocalizations> load(Locale locale) async {
+    return await GlobalMaterialLocalizations.delegate.load(const Locale('fr', 'FR'));
+  }
+
+  @override
+  bool shouldReload(_MgMaterialLocalizationsDelegate old) => false;
+}
+
+class _MgCupertinoLocalizationsDelegate extends LocalizationsDelegate<CupertinoLocalizations> {
+  const _MgCupertinoLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => locale.languageCode == 'mg';
+
+  @override
+  Future<CupertinoLocalizations> load(Locale locale) async {
+    return await GlobalCupertinoLocalizations.delegate.load(const Locale('fr', 'FR'));
+  }
+
+  @override
+  bool shouldReload(_MgCupertinoLocalizationsDelegate old) => false;
+}
+
 extension TranslationExtension on BuildContext {
   String tr(String key) {
     return AppLocalization.of(this)?.translate(key) ?? key;

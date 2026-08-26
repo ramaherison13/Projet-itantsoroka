@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/core/admin_theme.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 import 'package:itantsoroka/widgets/administration/types_table_widget.dart';
 import 'package:itantsoroka/widgets/administration/sous_types_table_widget.dart';
 
@@ -206,7 +207,7 @@ class _ActeTypeManagementScreenState extends State<ActeTypeManagementScreen>
                         Row(
                           children: [
                             Text(
-                              isMobile ? 'Types d\'Actes' : 'Gestion des Types d\'Actes',
+                              isMobile ? context.tr('acte_gestion_titre_mobile') : context.tr('acte_gestion_titre'),
                               style: TextStyle(
                                 fontSize: isMobile ? 15 : 18,
                                 fontWeight: FontWeight.bold,
@@ -216,14 +217,14 @@ class _ActeTypeManagementScreenState extends State<ActeTypeManagementScreen>
                             ),
                             if (!isMobile) ...[
                               const SizedBox(width: 8),
-                              AdminTheme.badge('Contrôle de Légalité', AdminTheme.warning),
+                              AdminTheme.badge(context.tr('acte_controle_legalite'), AdminTheme.warning),
                             ],
                           ],
                         ),
                         if (!isMobile) ...[
                           const SizedBox(height: 3),
                           Text(
-                            'Organiser et normaliser les types et sous-types d\'actes administratifs.',
+                            context.tr('acte_sous_titre'),
                             style: TextStyle(
                               fontSize: 12,
                               color: isDark ? AdminTheme.textSecondaryDark : AdminTheme.textSecondary,
@@ -242,7 +243,7 @@ class _ActeTypeManagementScreenState extends State<ActeTypeManagementScreen>
                       size: 20,
                     ),
                     onPressed: _refreshData,
-                    tooltip: 'Actualiser',
+                    tooltip: context.tr('actualiser'),
                   ),
                 ],
               ),
@@ -300,7 +301,7 @@ class _ActeTypeManagementScreenState extends State<ActeTypeManagementScreen>
                         children: [
                           Icon(Icons.label_rounded, size: isMobile ? 15 : 17),
                           const SizedBox(width: 6),
-                          Text(isMobile ? 'Types' : 'Type d\'Acte'),
+                          Text(isMobile ? context.tr('acte_types_mobile') : context.tr('acte_type')),
                         ],
                       ),
                     ),
@@ -311,7 +312,7 @@ class _ActeTypeManagementScreenState extends State<ActeTypeManagementScreen>
                         children: [
                           Icon(Icons.layers_rounded, size: isMobile ? 15 : 17),
                           const SizedBox(width: 6),
-                          Text(isMobile ? 'Sous-types' : 'Sous-type d\'Acte'),
+                          Text(isMobile ? context.tr('acte_sous_types_mobile') : context.tr('acte_sous_type')),
                         ],
                       ),
                     ),
@@ -347,7 +348,7 @@ class _ActeTypeManagementScreenState extends State<ActeTypeManagementScreen>
               ),
             ),
 
-            const SizedBox(height: 12),
+            SizedBox(height: isMobile ? 80 : 12),
           ],
         ),
       ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/role_navigation_service.dart';
 import 'header_widget.dart';
 
 class MainLayout extends StatelessWidget {
@@ -10,45 +13,20 @@ class MainLayout extends StatelessWidget {
     required this.child,
   });
 
-  int _getSelectedIndex(String path) {
-    if (path.startsWith('/monographie') || path.startsWith('/monography')) {
-      return 1;
+  int _getSelectedIndex(String path, List<RoleNavItem> items) {
+    for (int i = 0; i < items.length; i++) {
+      if (path.startsWith(items[i].path) && items[i].path != '/') return i;
     }
-    if (path.startsWith('/document')) {
-      return 2;
-    }
-    if (path.startsWith('/offres-appui') || path.startsWith('/offrestd')) {
-      return 3;
-    }
-    if (path.startsWith('/actualites')) {
-      return 4;
-    }
-    if (path.startsWith('/officeprojet')) {
-      return 5;
+    if (path == '/') {
+      final idx = items.indexWhere((it) => it.path == '/');
+      if (idx >= 0) return idx;
     }
     return 0;
   }
 
-  void _onItemTapped(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        context.go('/');
-        break;
-      case 1:
-        context.go('/monographie');
-        break;
-      case 2:
-        context.go('/document');
-        break;
-      case 3:
-        context.go('/offres-appui');
-        break;
-      case 4:
-        context.go('/actualites');
-        break;
-      case 5:
-        context.go('/officeprojet');
-        break;
+  void _onItemTapped(BuildContext context, int index, List<RoleNavItem> items) {
+    if (index < items.length) {
+      context.go(items[index].path);
     }
   }
 
@@ -59,8 +37,13 @@ class MainLayout extends StatelessWidget {
     final bool isWideDesktop = screenWidth >= 1024;
     final bool showBottomBar = !isWideDesktop;
 
+    // Lire les rôles depuis l'AuthProvider
+    final auth = context.watch<AuthProvider>();
+    final slugs = auth.roleSlugs;
+    final navItems = RoleNavigationService.getAllowedNavItems(slugs);
+
     final String currentPath = GoRouterState.of(context).uri.path;
-    final int selectedIndex = _getSelectedIndex(currentPath);
+    final int selectedIndex = _getSelectedIndex(currentPath, navItems);
 
     return Scaffold(
       body: SafeArea(
@@ -72,8 +55,9 @@ class MainLayout extends StatelessWidget {
             if (isWideDesktop)
               _ModernSocialVerticalSideBar(
                 selectedIndex: selectedIndex,
-                onTap: (idx) => _onItemTapped(context, idx),
+                onTap: (idx) => _onItemTapped(context, idx, navItems),
                 isDarkMode: isDarkMode,
+                navItems: navItems,
               ),
 
             // ── CONTENU PRINCIPAL ──────────────────────────────────────────
@@ -100,70 +84,27 @@ class MainLayout extends StatelessWidget {
       bottomNavigationBar: showBottomBar
           ? _ModernSocialBottomBar(
               selectedIndex: selectedIndex,
-              onTap: (idx) => _onItemTapped(context, idx),
+              onTap: (idx) => _onItemTapped(context, idx, navItems),
               isDarkMode: isDarkMode,
+              navItems: navItems,
             )
           : null,
     );
   }
 }
 
-// ── DONNÉES DES ONGLETS DE NAVIGATION ─────────────────────────────────────────
-class _TabItemData {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-
-  const _TabItemData({
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-  });
-}
-
-const List<_TabItemData> _navItemsData = [
-  _TabItemData(
-    label: 'Accueil',
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home_rounded,
-  ),
-  _TabItemData(
-    label: 'Monographie',
-    icon: Icons.grid_view_outlined,
-    selectedIcon: Icons.grid_view_rounded,
-  ),
-  _TabItemData(
-    label: 'Documents',
-    icon: Icons.folder_outlined,
-    selectedIcon: Icons.folder_rounded,
-  ),
-  _TabItemData(
-    label: 'Offres',
-    icon: Icons.handshake_outlined,
-    selectedIcon: Icons.handshake_rounded,
-  ),
-  _TabItemData(
-    label: 'Actualités',
-    icon: Icons.newspaper_outlined,
-    selectedIcon: Icons.newspaper_rounded,
-  ),
-  _TabItemData(
-    label: 'Projets',
-    icon: Icons.business_center_outlined,
-    selectedIcon: Icons.business_center_rounded,
-  ),
-];
-
 // ── BARRE DE NAVIGATION INFÉRIEURE CAPSULE FLOTTANTE (MOBILES ET TABLETTES) ───
 class _ModernSocialBottomBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
   final bool isDarkMode;
+  final List<RoleNavItem> navItems;
 
   const _ModernSocialBottomBar({
     required this.selectedIndex,
     required this.onTap,
     required this.isDarkMode,
+    required this.navItems,
   });
 
   @override
@@ -197,8 +138,8 @@ class _ModernSocialBottomBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(_navItemsData.length, (index) {
-            final item = _navItemsData[index];
+          children: List.generate(navItems.length, (index) {
+            final item = navItems[index];
             final bool isSelected = selectedIndex == index;
 
             return Expanded(
@@ -267,11 +208,13 @@ class _ModernSocialVerticalSideBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
   final bool isDarkMode;
+  final List<RoleNavItem> navItems;
 
   const _ModernSocialVerticalSideBar({
     required this.selectedIndex,
     required this.onTap,
     required this.isDarkMode,
+    required this.navItems,
   });
 
   @override
@@ -303,8 +246,8 @@ class _ModernSocialVerticalSideBar extends StatelessWidget {
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(_navItemsData.length, (index) {
-          final item = _navItemsData[index];
+        children: List.generate(navItems.length, (index) {
+          final item = navItems[index];
           final bool isSelected = selectedIndex == index;
 
           return Padding(

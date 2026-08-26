@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/core/admin_theme.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
+import 'package:itantsoroka/services/role_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -21,117 +23,144 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   int _acteTypeCount = 0;
   int _navigationCount = 0;
 
-  late AnimationController _refreshController;
   late AnimationController _bannerController;
   late Animation<double> _bannerFade;
   late Animation<Offset> _bannerSlide;
+  late AnimationController _refreshController;
 
   @override
   void initState() {
     super.initState();
-    _refreshController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
     _bannerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
     );
     _bannerFade = CurvedAnimation(
       parent: _bannerController,
       curve: Curves.easeOut,
     );
     _bannerSlide = Tween<Offset>(
-      begin: const Offset(0, -0.15),
+      begin: const Offset(0, -0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _bannerController,
       curve: Curves.easeOutCubic,
     ));
+
+    _refreshController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
     _bannerController.forward();
     _fetchStats();
   }
 
   @override
   void dispose() {
-    _refreshController.dispose();
     _bannerController.dispose();
+    _refreshController.dispose();
     super.dispose();
   }
 
   Future<void> _fetchStats() async {
-    setState(() => _loading = true);
     _refreshController.repeat();
+    setState(() => _loading = true);
 
     try {
-      // 1. Utilisateurs
+      // 1. Décompte utilisateurs
       try {
-        final usersRes =
-            await http.get(Uri.parse('${ApiConstants.serviceAuth}/users'));
-        if (usersRes.statusCode == 200) {
-          final data = json.decode(usersRes.body);
+        final res = await http.get(
+            Uri.parse('${ApiConstants.serviceAuth}/users?limit=1000'));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
           if (data is List) {
             _userCount = data.length;
           } else if (data is Map) {
-            final list = data['data'] ?? data['users'] ?? [];
-            _userCount = data['total'] ?? (list is List ? list.length : 0);
+            final list = data['users'] ?? data['data'] ?? [];
+            _userCount = data['total'] ??
+                data['count'] ??
+                data['totalUsers'] ??
+                (list is List ? list.length : 0);
           }
         }
       } catch (e) {
         debugPrint("Erreur décompte utilisateurs: $e");
       }
 
-      // 2. Rôles
+      // 2. Décompte rôles
       try {
-        final rolesRes =
-            await http.get(Uri.parse('${ApiConstants.serviceAuth}/roles'));
-        if (rolesRes.statusCode == 200) {
-          final data = json.decode(rolesRes.body);
-          if (data is List) {
-            _roleCount = data.length;
-          } else if (data is Map) {
-            final list = data['data'] ?? data['roles'] ?? [];
-            _roleCount = list is List ? list.length : 0;
+        final res = await RoleService.getAllRolesWithPermission();
+        List rolesList = [];
+        if (res != null) {
+          if (res is List) {
+            rolesList = res;
+          } else if (res is Map) {
+            rolesList = res['roles'] ?? res['data'] ?? res['content'] ?? [];
           }
         }
+
+        if (rolesList.isEmpty) {
+          final resFallback = await http.get(Uri.parse('${ApiConstants.serviceAuth}/roles'));
+          if (resFallback.statusCode >= 200 && resFallback.statusCode < 300) {
+            final data = jsonDecode(resFallback.body);
+            if (data is List) {
+              rolesList = data;
+            } else if (data is Map) {
+              rolesList = data['roles'] ?? data['data'] ?? data['content'] ?? [];
+            }
+          }
+        }
+
+        _roleCount = rolesList.length;
       } catch (e) {
         debugPrint("Erreur décompte rôles: $e");
       }
 
-      // 3. Types d'actes
+      // 3. Décompte types d'actes (Contrôle de Légalité)
       try {
-        for (final ep in [
-          '${ApiConstants.serviceControleDeLegalite}/acte-types',
-          '${ApiConstants.serviceControleDeLegalite}/types',
-        ]) {
+        final res = await http.get(Uri.parse(
+            '${ApiConstants.serviceControleDeLegalite}/acte-types'));
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          final data = jsonDecode(res.body);
+          if (data is List) {
+            _acteTypeCount = data.length;
+          } else if (data is Map) {
+            final list = data['data'] ?? data['types'] ?? [];
+            _acteTypeCount =
+                data['total'] ?? (list is List ? list.length : 0);
+          }
+        }
+      } catch (e) {
+        debugPrint("Erreur décompte types actes: $e");
+      }
+
+      // 4. Décompte navigations
+      try {
+        final endpoints = [
+          '${ApiConstants.serviceAuth}/navigation/by-app/8',
+          '${ApiConstants.serviceAuth}/navigation/by-application/1',
+          '${ApiConstants.serviceAuth}/navigation',
+        ];
+        for (final ep in endpoints) {
           try {
             final res = await http.get(Uri.parse(ep));
             if (res.statusCode >= 200 && res.statusCode < 300) {
-              final data = json.decode(res.body);
+              final data = jsonDecode(res.body);
               if (data is List) {
-                _acteTypeCount = data.length;
+                _navigationCount = data.length;
+                break;
               } else if (data is Map) {
-                final list = data['data'] ?? data['types'] ?? [];
-                _acteTypeCount = list is List ? list.length : 0;
+                final list = data['data'] ??
+                    data['navigation'] ??
+                    data['navigations'] ??
+                    [];
+                _navigationCount =
+                    data['total'] ?? (list is List ? list.length : 0);
+                if (_navigationCount > 0) break;
               }
-              break;
             }
           } catch (_) {}
-        }
-      } catch (_) {}
-
-      // 4. Navigations
-      try {
-        final navRes = await http
-            .get(Uri.parse('${ApiConstants.serviceAuth}/navigation'));
-        if (navRes.statusCode == 200) {
-          final data = json.decode(navRes.body);
-          if (data is List) {
-            _navigationCount = data.length;
-          } else if (data is Map) {
-            final list = data['data'] ?? [];
-            _navigationCount = list is List ? list.length : 0;
-          }
         }
       } catch (e) {
         debugPrint("Erreur décompte navigations: $e");
@@ -152,49 +181,58 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
     final List<Map<String, dynamic>> adminModules = [
       {
-        'title': 'Utilisateurs',
-        'description': 'Lister, rechercher et consulter les profils.',
+        'title': context.tr('admin_users'),
+        'description': context.tr('admin_users_desc'),
         'icon': Icons.people_alt_rounded,
         'color': AdminTheme.primaryLight,
         'route': '/admin/users',
-        'badge': _loading ? '...' : '$_userCount comptes',
+        'badge': _loading ? '...' : '$_userCount ${context.tr('admin_comptes')}',
         'gradient': [const Color(0xFF059669), const Color(0xFF10B981)],
       },
       {
-        'title': 'Mots de Passe',
-        'description': 'Réinitialiser et gérer la sécurité.',
+        'title': context.tr('admin_passwords'),
+        'description': context.tr('admin_passwords_desc'),
         'icon': Icons.lock_reset_rounded,
         'color': AdminTheme.info,
         'route': '/admin/passwords',
-        'badge': 'Sécurité',
+        'badge': context.tr('admin_securite'),
         'gradient': [const Color(0xFF1D4ED8), const Color(0xFF3B82F6)],
       },
       {
-        'title': 'Rôles & Permissions',
-        'description': 'Configurer les rôles et les privilèges.',
+        'title': context.tr('admin_roles'),
+        'description': context.tr('admin_roles_desc'),
         'icon': Icons.admin_panel_settings_rounded,
         'color': AdminTheme.purple,
         'route': '/admin/roles',
-        'badge': _loading ? '...' : '$_roleCount rôles',
+        'badge': _loading ? '...' : '$_roleCount ${context.tr('admin_roles_label')}',
         'gradient': [const Color(0xFF6D28D9), const Color(0xFF8B5CF6)],
       },
       {
-        'title': "Types d'Actes",
-        'description': 'Gérer la typologie des actes administratifs.',
+        'title': context.tr('admin_act_types'),
+        'description': context.tr('admin_act_types_desc'),
         'icon': Icons.gavel_rounded,
         'color': AdminTheme.warning,
         'route': '/admin/acte-type-management/type',
-        'badge': _loading ? '...' : '$_acteTypeCount types',
+        'badge': _loading ? '...' : '$_acteTypeCount ${context.tr('admin_types')}',
         'gradient': [const Color(0xFFD97706), const Color(0xFFF59E0B)],
       },
       {
-        'title': 'Navigation',
-        'description': 'Paramétrer les menus de l\'application.',
+        'title': context.tr('admin_navigation'),
+        'description': context.tr('admin_navigation_desc'),
         'icon': Icons.alt_route_rounded,
         'color': AdminTheme.pink,
         'route': '/admin/navigations',
-        'badge': _loading ? '...' : '$_navigationCount menus',
+        'badge': _loading ? '...' : '$_navigationCount ${context.tr('admin_menus')}',
         'gradient': [const Color(0xFFBE185D), const Color(0xFFEC4899)],
+      },
+      {
+        'title': context.tr('admin_affiliations'),
+        'description': context.tr('admin_affiliations_desc'),
+        'icon': Icons.account_balance_rounded,
+        'color': AdminTheme.primary,
+        'route': '/admin/affiliation',
+        'badge': context.tr('admin_services'),
+        'gradient': [const Color(0xFF04630A), const Color(0xFF098E00)],
       },
     ];
 
@@ -246,7 +284,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Modules d\'Administration',
+                  context.tr('admin_modules_title'),
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
@@ -381,7 +419,7 @@ class _WelcomeBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Panneau d\'Administration',
+                  context.tr('admin_title'),
                   style: TextStyle(
                     fontSize: isMobile ? 18 : 22,
                     fontWeight: FontWeight.bold,
@@ -391,7 +429,7 @@ class _WelcomeBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Gérez les utilisateurs, la sécurité et les configurations.',
+                  context.tr('admin_subtitle'),
                   style: TextStyle(
                     fontSize: isMobile ? 12 : 13,
                     color: Colors.white.withValues(alpha: 0.8),
@@ -441,20 +479,20 @@ class _QuickStatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final stats = [
       {
-        'label': 'Utilisateurs',
+        'label': context.tr('admin_users'),
         'value': loading ? '-' : '$userCount',
         'icon': Icons.people_alt_rounded,
         'color': AdminTheme.primaryLight,
       },
       {
-        'label': 'Rôles',
+        'label': context.tr('admin_roles_label'),
         'value': loading ? '-' : '$roleCount',
         'icon': Icons.shield_rounded,
         'color': AdminTheme.purple,
       },
       {
-        'label': 'Statut',
-        'value': 'Actif',
+        'label': context.tr('admin_statut'),
+        'value': context.tr('admin_actif'),
         'icon': Icons.check_circle_rounded,
         'color': AdminTheme.info,
       },

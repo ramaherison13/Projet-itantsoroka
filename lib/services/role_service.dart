@@ -60,19 +60,13 @@ class RoleService {
 
   static Future<dynamic> getAllRolesWithPermission() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/roles/application/$appId?limit=1000&page=1'));
-      
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return jsonDecode(response.body);
-      }
-
-      // Fallback 1: GET /serviceauth/application/1
+      // 1. GET /serviceauth/application/1 (contient les rôles configurés pour l'application)
       final resApp = await http.get(Uri.parse('$baseUrl/application/$appId'));
       if (resApp.statusCode >= 200 && resApp.statusCode < 300) {
         return jsonDecode(resApp.body);
       }
 
-      // Fallback 2: GET /serviceauth/roles
+      // 2. GET /serviceauth/roles
       final resRoles = await http.get(Uri.parse('$baseUrl/roles'));
       if (resRoles.statusCode >= 200 && resRoles.statusCode < 300) {
         return jsonDecode(resRoles.body);

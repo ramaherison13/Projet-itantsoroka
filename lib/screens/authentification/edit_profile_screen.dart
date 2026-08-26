@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/providers/auth_provider.dart';
 
@@ -23,6 +24,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _showPassword = false;
   bool _loading = false;
   String _error = "";
+
+  void _navigateBack() {
+    if (!mounted) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    context.go(auth.homeRoute);
+  }
   String _success = "";
 
   @override
@@ -112,7 +119,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _passwordController.clear();
           });
           Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) Navigator.pop(context);
+            if (mounted) _navigateBack();
           });
         }
       } else {
@@ -159,7 +166,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 // Header de retour
                 TextButton.icon(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _navigateBack,
                   icon: Icon(Icons.arrow_back,
                       color: isDark ? Colors.grey.shade400 : Colors.grey),
                   label: Text("Retour",
@@ -376,7 +383,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: _navigateBack,
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 14),

@@ -3,8 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/providers/theme_provider.dart';
+import 'package:itantsoroka/providers/auth_provider.dart';
+import 'package:itantsoroka/services/role_navigation_service.dart';
+import 'package:itantsoroka/widgets/language_setting_widget.dart';
 
 class HeaderWidget extends StatefulWidget implements PreferredSizeWidget {
   const HeaderWidget({super.key});
@@ -24,44 +28,8 @@ class _HeaderWidgetState extends State<HeaderWidget>
   late Animation<double> _fadeAnimation;
   OverlayEntry? _overlayEntry;
 
-  static const List<Map<String, dynamic>> _navItems = [
-    {
-      'label': 'Accueil',
-      'path': '/',
-      'icon': Icons.home_rounded,
-      'outlinedIcon': Icons.home_outlined,
-    },
-    {
-      'label': 'Monographie',
-      'path': '/monographie',
-      'icon': Icons.grid_view_rounded,
-      'outlinedIcon': Icons.grid_view_outlined,
-    },
-    {
-      'label': 'Document',
-      'path': '/document',
-      'icon': Icons.folder_rounded,
-      'outlinedIcon': Icons.folder_outlined,
-    },
-    {
-      'label': 'Actualités',
-      'path': '/actualites',
-      'icon': Icons.newspaper_rounded,
-      'outlinedIcon': Icons.newspaper_outlined,
-    },
-    {
-      'label': "Offres d'Appui",
-      'path': '/offres-appui',
-      'icon': Icons.handshake_rounded,
-      'outlinedIcon': Icons.handshake_outlined,
-    },
-    {
-      'label': 'Projet',
-      'path': '/officeprojet',
-      'icon': Icons.business_center_rounded,
-      'outlinedIcon': Icons.business_center_outlined,
-    },
-  ];
+  // Les items de navigation sont maintenant dynamiques (voir _buildNavItems)
+  // et filtrés selon le rôle de l'utilisateur connecté.
 
   @override
   void initState() {
@@ -74,7 +42,9 @@ class _HeaderWidgetState extends State<HeaderWidget>
       parent: _animController,
       curve: Curves.easeInOut,
     );
-    _fetchProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchProfile();
+    });
   }
 
   @override
@@ -126,6 +96,10 @@ class _HeaderWidgetState extends State<HeaderWidget>
     const bool isActivated = true;
     const brandGreen = Color(0xFF098E00);
 
+    // Navigation filtrée par rôle pour le menu mobile
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final roleNavItems = RoleNavigationService.getAllowedNavItems(auth.roleSlugs);
+
     _overlayEntry = OverlayEntry(
       builder: (ctx) => Positioned(
         top: MediaQuery.of(ctx).padding.top + 60.0,
@@ -165,22 +139,21 @@ class _HeaderWidgetState extends State<HeaderWidget>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    ..._navItems.map((item) {
+                    ...roleNavItems.map((item) {
                       // Utilise le chemin capturé avant la construction de l'overlay
                       // GoRouterState.of(ctx) échouerait car ctx n'est pas dans
                       // la hiérarchie du GoRouter.
-                      final bool isActive =
-                          GoRouterState.of(context).uri.path == item['path'];
-                      final IconData iconData = isActive
-                          ? (item['icon'] as IconData)
-                          : (item['outlinedIcon'] as IconData);
+                      final String currentPath = GoRouterState.of(context).uri.path;
+                      final bool isActive = currentPath == item.path ||
+                          (item.path != '/' && currentPath.startsWith(item.path));
+                      final IconData iconData = isActive ? item.selectedIcon : item.icon;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 4),
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () => _closeMenuAndNavigate(item['path'] as String),
+                            onTap: () => _closeMenuAndNavigate(item.path),
                             borderRadius: BorderRadius.circular(16),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -216,7 +189,7 @@ class _HeaderWidgetState extends State<HeaderWidget>
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Text(
-                                      item['label'] as String,
+                                      item.label,
                                       style: TextStyle(
                                         fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
                                         color: isActive
@@ -260,70 +233,319 @@ class _HeaderWidgetState extends State<HeaderWidget>
     overlay.insert(_overlayEntry!);
   }
 
-  void _showProfilePopup(BuildContext context) {
+  AuthProvider? _getAuth(BuildContext ctx) {
+    try {
+      return Provider.of<AuthProvider>(ctx, listen: false);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _showProfilePopup(BuildContext context) async {
+    // Cache context-dependent values before async gap
+    final auth = _getAuth(context);
+    if (_fullProfile == null) {
+      await _fetchProfile();
+    }
+    if (!mounted) return;
+
+    final userObj = _fullProfile?['user'] as Map<String, dynamic>?;
+    final citoyenObj = _fullProfile?['citoyen'] as Map<String, dynamic>?;
+
+    // Calcul du nom complet
+    String fullName = '';
+    if (citoyenObj != null) {
+      final firstName = citoyenObj['citizen_first_name'] ?? citoyenObj['first_name'] ?? citoyenObj['prenom'] ?? userObj?['user_first_name'] ?? '';
+      final lastName = citoyenObj['citizen_last_name'] ?? citoyenObj['last_name'] ?? citoyenObj['nom'] ?? userObj?['user_last_name'] ?? '';
+      fullName = '$firstName $lastName'.trim();
+    }
+    if (fullName.isEmpty && userObj != null) {
+      fullName = userObj['user_pseudo'] ?? userObj['user_email'] ?? '';
+    }
+    if (fullName.isEmpty && auth != null) {
+      fullName = auth.userName;
+    }
+
+    // Pseudo / handle (@pseudo)
+    final String rawPseudo = userObj?['user_pseudo'] ?? auth?.user?.userPseudo ?? 'user';
+    final String pseudo = rawPseudo.startsWith('@') ? rawPseudo.substring(1) : rawPseudo;
+
+    // Toerana misy (Adresse / Fokontany, Commune, District)
+    String locationStr = '';
+    if (citoyenObj != null || userObj != null) {
+      final rawAddress = citoyenObj?['citizen_adress'] ??
+          citoyenObj?['citizen_address'] ??
+          citoyenObj?['address'] ??
+          citoyenObj?['adresse'] ??
+          citoyenObj?['fokontany'] ??
+          citoyenObj?['fokontany_name'] ??
+          userObj?['user_address'] ??
+          userObj?['address'];
+
+      final commune = citoyenObj?['commune_name'] ??
+          citoyenObj?['municipality_name'] ??
+          citoyenObj?['commune'] ??
+          userObj?['municipality_name'] ??
+          userObj?['municipalityName'] ??
+          '';
+
+      final district = citoyenObj?['district_name'] ??
+          citoyenObj?['district'] ??
+          userObj?['district_name'] ??
+          userObj?['districtName'] ??
+          '';
+
+      final parts = <String>[];
+      final locCandidates = [rawAddress, commune, district];
+      for (final candidate in locCandidates) {
+        if (candidate == null) continue;
+        final cStr = candidate.toString().trim();
+        if (cStr.isEmpty || cStr == 'N/A' || cStr == 'null') continue;
+
+        if (_locationNameCache.containsKey(cStr)) {
+          final cached = _locationNameCache[cStr]!;
+          if (!parts.contains(cached)) parts.add(cached);
+        } else if (_isCodeOrUuid(cStr)) {
+          if (!parts.contains(cStr)) parts.add(cStr);
+          _resolveLocationName(cStr).then((resolved) {
+            if (resolved != null && mounted) {
+              setState(() {
+                if (citoyenObj != null) {
+                  citoyenObj['citizen_adress'] = resolved;
+                } else if (userObj != null) {
+                  userObj['user_address'] = resolved;
+                }
+              });
+            }
+          });
+        } else {
+          if (!parts.contains(cStr)) parts.add(cStr);
+        }
+      }
+
+      if (parts.isNotEmpty) {
+        locationStr = parts.join(', ');
+      }
+    }
+    if (locationStr.isEmpty && auth?.user?.municipalityName != null && auth!.user!.municipalityName.isNotEmpty) {
+      locationStr = auth.user!.municipalityName;
+    }
+    if (locationStr.isEmpty) {
+      locationStr = 'Non renseigné';
+    }
+
+    // Andraikitra (Roles)
+    String rolesStr = '';
+    if (userObj != null && userObj['roles'] != null) {
+      final rList = userObj['roles'];
+      if (rList is List) {
+        rolesStr = rList
+            .map((r) => (r is Map ? (r['role_slug'] ?? r['role_name'] ?? r['name']) : r.toString()))
+            .where((s) => s.toString().trim().isNotEmpty)
+            .join(', ');
+      }
+    }
+    if (rolesStr.isEmpty && auth != null && auth.roleSlugs.isNotEmpty) {
+      rolesStr = auth.roleSlugs.join(', ');
+    }
+    if (rolesStr.isEmpty) {
+      rolesStr = 'Citoyen';
+    }
+
+    // Mailaka (Email)
+    String emailStr = userObj?['user_email'] ?? citoyenObj?['email'] ?? auth?.userEmail ?? '';
+    if (emailStr.isEmpty) {
+      emailStr = 'Non renseigné';
+    }
+
+    // Laharana finday (Phone)
+    String phoneStr = citoyenObj?['phone_number'] ??
+        citoyenObj?['phone'] ??
+        citoyenObj?['citizen_phone'] ??
+        userObj?['user_phone'] ??
+        userObj?['phone'] ??
+        '';
+    if (phoneStr.isEmpty) {
+      phoneStr = 'Non renseigné';
+    }
+
     showDialog(
+      // ignore: use_build_context_synchronously
       context: context,
       builder: (BuildContext ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final cardBg = isDark ? const Color(0xFF161E2E) : const Color(0xFF192231);
+
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Container(
-            width: 320,
-            padding: const EdgeInsets.all(20),
+            width: 340,
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 32,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Profil Utilisateur',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    IconButton(
-                      icon: const Icon(Icons.close),
+                // ── Bouton Fermer (X) ─────────────────────────────────────────
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10, right: 10),
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white60, size: 20),
                       onPressed: () => Navigator.of(ctx).pop(),
+                      splashRadius: 18,
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 16),
+
+                // ── Avatar avec Logo Oeil Vert Glowing ────────────────────────
                 Container(
-                  width: 64,
-                  height: 64,
-                  decoration: const BoxDecoration(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFF098E00),
+                    color: const Color(0xFF0F2618),
+                    border: Border.all(color: const Color(0xFF00E676), width: 2.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00E676).withValues(alpha: 0.35),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                  child: Center(
-                    child: Text(
-                      (_fullProfile?['user']?['user_pseudo'] ?? 'U')[0].toUpperCase(),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 26),
+                  child: ClipOval(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset(
+                        'assets/images/logo_dd_v3.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Image.asset(
+                          'assets/images/logo_dd.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (ctx, err, _) => const Icon(
+                            Icons.visibility_rounded,
+                            color: Color(0xFF00E676),
+                            size: 36,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  _fullProfile?['user']?['user_pseudo'] ?? 'Utilisateur connecté',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      context.go('/profile/edit');
-                    },
-                    child: const Text('Modifier le profil'),
+                const SizedBox(height: 14),
+
+                // ── Nom complet ──────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    fullName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF098E00)),
-                    child: const Text('Fermer', style: TextStyle(color: Colors.white)),
+                const SizedBox(height: 4),
+
+                // ── Pseudo @handle ───────────────────────────────────────────
+                Text(
+                  '@$pseudo',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF00E676),
+                  ),
+                ),
+                const SizedBox(height: 22),
+
+                // ── Liste des informations du profil ─────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      // 1. Toerana misy (Location)
+                      _buildProfileInfoItem(
+                        icon: Icons.location_on_outlined,
+                        label: 'Toerana misy',
+                        value: locationStr,
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 2. Andraikitra (Roles)
+                      _buildProfileInfoItem(
+                        icon: Icons.cases_outlined,
+                        label: 'Andraikitra',
+                        value: rolesStr,
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 3. Mailaka (Email)
+                      _buildProfileInfoItem(
+                        icon: Icons.email_outlined,
+                        label: 'Mailaka',
+                        value: emailStr,
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 4. Laharana finday (Phone)
+                      _buildProfileInfoItem(
+                        icon: Icons.phone_outlined,
+                        label: 'Laharana finday',
+                        value: phoneStr,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Bouton "Modifier mon profil" ──────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        context.go('/profile/edit');
+                      },
+                      icon: const Icon(Icons.edit_square, size: 19),
+                      label: const Text(
+                        'Modifier mon profil',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF098E00),
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: const Color(0xFF098E00).withValues(alpha: 0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -334,11 +556,190 @@ class _HeaderWidgetState extends State<HeaderWidget>
     );
   }
 
+  Widget _buildProfileInfoItem({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(
+            icon,
+            color: const Color(0xFF00E676),
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF94A3B8),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static final Map<String, String> _locationNameCache = {};
+
+  static bool _isCodeOrUuid(String? str) {
+    if (str == null) return false;
+    final s = str.trim();
+    if (s.isEmpty || s == 'N/A' || s == 'null') return false;
+    // UUID pattern
+    if (RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(s)) return true;
+    // Pure numeric ID
+    if (RegExp(r'^\d+$').hasMatch(s)) return true;
+    // Formatted territory code pattern like "056IG256", "DIS-001", "C056IG256" (no spaces, contains numbers + letters)
+    if (!s.contains(' ') && RegExp(r'^[A-Za-z0-9_-]{4,30}$').hasMatch(s) && RegExp(r'\d').hasMatch(s)) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<String?> _resolveLocationName(String? rawId, {bool isDistrict = false}) async {
+    if (rawId == null) return null;
+    final id = rawId.trim();
+    if (id.isEmpty || id == 'N/A' || id == 'null') return null;
+
+    if (!_isCodeOrUuid(id)) return id;
+    if (_locationNameCache.containsKey(id)) return _locationNameCache[id];
+
+    const String apiUrl = ApiConstants.gatewayBaseUrl;
+    final endpoints = isDistrict
+        ? [
+            '$apiUrl/servicetritoire-v2/districts/$id',
+            '$apiUrl/servicetritoire-v2/communes/noForm/$id',
+            '$apiUrl/servicetritoire-v2/communes/$id',
+            '$apiUrl/serviceressource/districts',
+          ]
+        : [
+            '$apiUrl/servicetritoire-v2/communes/noForm/$id',
+            '$apiUrl/servicetritoire-v2/communes/$id',
+            '$apiUrl/servicetritoire-v2/districts/$id',
+          ];
+
+    for (final ep in endpoints) {
+      try {
+        final res = await http.get(Uri.parse(ep));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          if (data is Map) {
+            final name = data['name'] ??
+                data['label'] ??
+                data['commune_name'] ??
+                data['district_name'] ??
+                data['name_fr'] ??
+                data['libelle'] ??
+                data['nom'];
+            if (name != null && name.toString().trim().isNotEmpty && !_isCodeOrUuid(name.toString())) {
+              final result = name.toString().trim();
+              _locationNameCache[id] = result;
+              return result;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<void> _enrichProfileLocationData(Map<String, dynamic> fullProfile) async {
+    try {
+      final userObj = fullProfile['user'] as Map<String, dynamic>?;
+      final citoyenObj = fullProfile['citoyen'] as Map<String, dynamic>?;
+
+      final addrVal = citoyenObj?['citizen_adress'] ?? citoyenObj?['citizen_address'] ?? userObj?['user_address'];
+      final communeVal = citoyenObj?['commune_name'] ??
+          citoyenObj?['municipality_name'] ??
+          citoyenObj?['commune'] ??
+          userObj?['municipality_name'] ??
+          userObj?['municipalityName'] ??
+          userObj?['municipality_id'];
+      final districtVal = citoyenObj?['district_name'] ??
+          citoyenObj?['district'] ??
+          userObj?['district_name'] ??
+          userObj?['districtName'] ??
+          userObj?['district_id'];
+
+      if (addrVal != null && _isCodeOrUuid(addrVal.toString())) {
+        final resolved = await _resolveLocationName(addrVal.toString(), isDistrict: false);
+        if (resolved != null) {
+          if (citoyenObj != null) citoyenObj['citizen_adress'] = resolved;
+          if (userObj != null) userObj['user_address'] = resolved;
+        }
+      }
+
+      if (communeVal != null && _isCodeOrUuid(communeVal.toString())) {
+        final resolved = await _resolveLocationName(communeVal.toString(), isDistrict: false);
+        if (resolved != null) {
+          if (citoyenObj != null) citoyenObj['commune_name'] = resolved;
+          if (userObj != null) userObj['municipality_name'] = resolved;
+        }
+      }
+
+      if (districtVal != null && _isCodeOrUuid(districtVal.toString())) {
+        final resolved = await _resolveLocationName(districtVal.toString(), isDistrict: true);
+        if (resolved != null) {
+          if (citoyenObj != null) citoyenObj['district_name'] = resolved;
+          if (userObj != null) userObj['district_name'] = resolved;
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _fetchProfile() async {
     try {
-      final authState = <String, dynamic>{};
-      final userId = authState['user_id']?.toString();
-      if (userId == null) return;
+      if (!mounted) return;
+      final auth = _getAuth(context);
+      String? userId = auth?.user?.userId;
+
+      if (userId == null || userId.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('access_token');
+        if (token != null && token.isNotEmpty) {
+          try {
+            String resolvedToken = token;
+            try {
+              final parsed = jsonDecode(token);
+              if (parsed is String) {
+                resolvedToken = parsed;
+              } else if (parsed is Map) {
+                resolvedToken = parsed['access_token'] ?? parsed['token'] ?? token;
+              }
+            } catch (_) {}
+            final parts = resolvedToken.split('.');
+            if (parts.length > 1) {
+              final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+              userId = payload['user_id']?.toString() ?? payload['id']?.toString() ?? payload['sub']?.toString();
+            }
+          } catch (_) {}
+        }
+      }
+
+      if (userId == null || userId.isEmpty) return;
 
       const String apiUrl = ApiConstants.gatewayBaseUrl;
       final res = await http.get(Uri.parse('$apiUrl/serviceauth/users/$userId'));
@@ -346,6 +747,7 @@ class _HeaderWidgetState extends State<HeaderWidget>
 
       final userData = jsonDecode(res.body);
       final userProfile = userData['user'] ?? userData;
+      dynamic citoyenObj = userData['citoyen'] ?? userData['citizen'] ?? userProfile['citoyen'] ?? userProfile['citizen'];
       final citizenId = userProfile['id_citizen'] ?? userProfile['citizen_id'];
 
       const invalidCitizenIds = {
@@ -355,21 +757,42 @@ class _HeaderWidgetState extends State<HeaderWidget>
         '550e8400-e29b-41d4-a716-446655440000',
       };
 
-      if (citizenId == null || invalidCitizenIds.contains(citizenId)) {
-        if (mounted) setState(() => _fullProfile = {'user': userProfile, 'citoyen': null});
-        return;
+      if (citoyenObj is! Map || citoyenObj.isEmpty) {
+        citoyenObj = null;
+        if (citizenId != null && !invalidCitizenIds.contains(citizenId)) {
+          try {
+            final citizenRes = await http.get(
+              Uri.parse('$apiUrl/servicecitoyen/citizens/getCitizenById/$citizenId'),
+            );
+            if (citizenRes.statusCode == 200) {
+              final cData = jsonDecode(citizenRes.body);
+              if (cData is Map && cData.isNotEmpty) {
+                citoyenObj = cData;
+              }
+            }
+          } catch (_) {}
+        }
       }
 
-      final citizenRes = await http.get(
-          Uri.parse('$apiUrl/servicecitoyen/citizens/getCitizenById/$citizenId'));
-      if (citizenRes.statusCode == 200) {
-        final citizenData = jsonDecode(citizenRes.body);
-        if (mounted) setState(() => _fullProfile = {'user': userProfile, 'citoyen': citizenData});
-      } else {
-        if (mounted) setState(() => _fullProfile = {'user': userProfile, 'citoyen': null});
+      if (citoyenObj == null) {
+        try {
+          final citizenByUserIdRes = await http.get(
+            Uri.parse('$apiUrl/servicecitoyen/citizens/user/$userId'),
+          );
+          if (citizenByUserIdRes.statusCode == 200) {
+            final cData = jsonDecode(citizenByUserIdRes.body);
+            if (cData is Map && cData.isNotEmpty) {
+              citoyenObj = cData;
+            }
+          }
+        } catch (_) {}
       }
+
+      final profileMap = {'user': userProfile, 'citoyen': citoyenObj};
+      await _enrichProfileLocationData(profileMap);
+      if (mounted) setState(() => _fullProfile = profileMap);
     } catch (e) {
-      debugPrint('Header: Error fetching user profile: \$e');
+      debugPrint('Header: Error fetching user profile: $e');
     }
   }
 
@@ -381,6 +804,10 @@ class _HeaderWidgetState extends State<HeaderWidget>
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final String currentPath = GoRouterState.of(context).uri.path;
     final bool isDesktop = MediaQuery.of(context).size.width >= 1200;
+
+    // Navigation filtrée par rôle
+    final auth = context.watch<AuthProvider>();
+    final roleNavItems = RoleNavigationService.getAllowedNavItems(auth.roleSlugs);
 
     return Container(
       height: 64.0,
@@ -477,11 +904,12 @@ class _HeaderWidgetState extends State<HeaderWidget>
                 const SizedBox(width: 32),
                 Expanded(
                   child: Row(
-                    children: _navItems.map((item) {
-                      final bool isActive = currentPath == item['path'];
+                    children: roleNavItems.map((item) {
+                      final bool isActive = currentPath == item.path ||
+                          (item.path != '/' && currentPath.startsWith(item.path));
                       return _NavLink(
-                        label: item['label'] as String,
-                        path: item['path'] as String,
+                        label: item.label,
+                        path: item.path,
                         isActive: isActive,
                         isDarkMode: isDarkMode,
                       );
@@ -603,6 +1031,8 @@ class _HeaderWidgetState extends State<HeaderWidget>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        const LanguageSettingWidget(),
+        const SizedBox(width: 6),
         _buildThemeMenuButton(context, isDarkMode),
         const SizedBox(width: 4),
         GestureDetector(
@@ -652,6 +1082,8 @@ class _HeaderWidgetState extends State<HeaderWidget>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        const LanguageSettingWidget(),
+        const SizedBox(width: 6),
         _buildThemeMenuButton(context, isDarkMode),
         const SizedBox(width: 2),
         TextButton(

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 
-// Helper function to extract role slugs (equivalent to getUserRoleSlugs in TypeScript)
+// Helper function to extract role slugs
 List<String> getUserRoleSlugs(Map<String, dynamic>? user) {
   if (user == null) return [];
   final directRoles = user['roles'] is List ? user['roles'] as List : [];
@@ -49,50 +50,50 @@ class SideBarWidget extends StatefulWidget {
 }
 
 class SideBarWidgetState extends State<SideBarWidget> {
-  // Cache to store loaded menus by category
   final Map<String, List<dynamic>> _menuCache = {};
   List<dynamic> _currentMenuItems = [];
   bool _initialLoading = true;
   bool _hasLoadedOnce = false;
 
-  final List<Map<String, dynamic>> _adminMenuItems = [
+  /// Returns the admin menu items using translated labels
+  List<Map<String, dynamic>> _buildAdminMenuItems() => [
     {
       'path': '/admin',
       'icon': Icons.space_dashboard_rounded,
-      'nameKey': 'Tableau de bord',
+      'nameKey': context.tr('sidebar_dashboard'),
     },
     {
       'path': '/admin/users',
       'icon': Icons.people_alt_rounded,
-      'nameKey': 'Utilisateurs',
+      'nameKey': context.tr('admin_users'),
     },
     {
       'path': '/admin/passwords',
       'icon': Icons.lock_reset_rounded,
-      'nameKey': 'Mots de passe',
+      'nameKey': context.tr('admin_passwords'),
     },
     {
       'path': '/admin/roles',
       'icon': Icons.admin_panel_settings_rounded,
-      'nameKey': 'Rôles & Permissions',
+      'nameKey': context.tr('admin_roles'),
     },
     {
       'path': '/admin/acte-type-management/type',
       'icon': Icons.gavel_rounded,
-      'nameKey': 'Types d\'actes',
+      'nameKey': context.tr('admin_act_types'),
     },
     {
       'path': '/admin/navigations',
       'icon': Icons.alt_route_rounded,
-      'nameKey': 'Navigations',
+      'nameKey': context.tr('admin_navigation'),
     },
   ];
 
-  final List<Map<String, dynamic>> _accueil = [
+  List<Map<String, dynamic>> _buildAccueilItems() => [
     {
       'path': '/modules',
       'icon': Icons.grid_view_rounded,
-      'nameKey': 'Modules',
+      'nameKey': context.tr('sidebar_modules'),
       'color': 'home',
     },
   ];
@@ -100,13 +101,18 @@ class SideBarWidgetState extends State<SideBarWidget> {
   @override
   void initState() {
     super.initState();
-    _getNavigation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _getNavigation();
+      }
+    });
   }
 
   @override
   void didUpdateWidget(covariant SideBarWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentPathname != widget.currentPathname || oldWidget.user != widget.user) {
+    if (oldWidget.currentPathname != widget.currentPathname ||
+        oldWidget.user != widget.user) {
       _getNavigation();
     }
   }
@@ -122,22 +128,23 @@ class SideBarWidgetState extends State<SideBarWidget> {
   }
 
   Future<void> _getNavigation() async {
-    final uriSegments = widget.currentPathname.split('/').where((s) => s.isNotEmpty).toList();
+    final uriSegments =
+        widget.currentPathname.split('/').where((s) => s.isNotEmpty).toList();
     final currentCategory = uriSegments.isNotEmpty ? uriSegments[0] : '';
 
     if (currentCategory == 'admin') {
-      setState(() {
-        _currentMenuItems = _adminMenuItems;
-        _initialLoading = false;
-        _hasLoadedOnce = true;
-      });
+      if (mounted) {
+        setState(() {
+          _currentMenuItems = _buildAdminMenuItems();
+          _initialLoading = false;
+          _hasLoadedOnce = true;
+        });
+      }
       return;
     }
 
     if (widget.user == null) {
-      setState(() {
-        _initialLoading = false;
-      });
+      setState(() => _initialLoading = false);
       return;
     }
 
@@ -157,18 +164,19 @@ class SideBarWidgetState extends State<SideBarWidget> {
       final data = await widget.getAppNavigationForAnUser(widget.appId);
       final userRoleSlugs = getUserRoleSlugs(widget.user);
 
-      // Filter by category and roles
       List<dynamic> navs = data.where((nav) {
         return nav['category'] == currentCategory;
       }).where((link) {
-        final requiredRoles = link['requiredRoles'] is List ? link['requiredRoles'] as List : [];
-        return requiredRoles.any((role) => userRoleSlugs.contains(role.toString()));
+        final requiredRoles =
+            link['requiredRoles'] is List ? link['requiredRoles'] as List : [];
+        return requiredRoles
+            .any((role) => userRoleSlugs.contains(role.toString()));
       }).toList();
 
       navs = _sortByOrder(navs);
 
       if (navs.isEmpty && currentCategory == 'admin') {
-        navs = _adminMenuItems;
+        navs = _buildAdminMenuItems();
       }
 
       _menuCache[currentCategory] = navs;
@@ -185,7 +193,7 @@ class SideBarWidgetState extends State<SideBarWidget> {
       if (mounted) {
         setState(() {
           if (currentCategory == 'admin') {
-            _currentMenuItems = _adminMenuItems;
+            _currentMenuItems = _buildAdminMenuItems();
           }
           _initialLoading = false;
         });
@@ -197,16 +205,22 @@ class SideBarWidgetState extends State<SideBarWidget> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = const Color(0xFF10B981);
-    final activeBgColor = isDarkMode ? const Color(0xFF064E3B) : const Color(0xFFE6F4EA);
-    final textColor = isDarkMode ? Colors.white : const Color(0xFF1F2937);
+    final activeBgColor =
+        isDarkMode ? const Color(0xFF064E3B) : const Color(0xFFE6F4EA);
+    final textColor =
+        isDarkMode ? Colors.white : const Color(0xFF1F2937);
+
+    // Rebuild translated items every time build is called so locale changes apply
+    final isAdmin = widget.currentPathname.startsWith('/admin');
+    final menuItems = isAdmin ? _buildAdminMenuItems() : _currentMenuItems;
+    final accueilItems = _buildAccueilItems();
 
     return Material(
       color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
       child: Column(
         children: [
-          if (_initialLoading)
-            const LinearProgressIndicator(minHeight: 2),
-          
+          if (_initialLoading) const LinearProgressIndicator(minHeight: 2),
+
           // Header Sidebar
           Container(
             padding: const EdgeInsets.all(20),
@@ -227,7 +241,7 @@ class SideBarWidgetState extends State<SideBarWidget> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    "Administration",
+                    context.tr('sidebar_administration'),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -243,25 +257,30 @@ class SideBarWidgetState extends State<SideBarWidget> {
 
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
               children: [
-                if (_currentMenuItems.isNotEmpty) ...[
+                if (menuItems.isNotEmpty) ...[
                   Padding(
-                    padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+                    padding:
+                        const EdgeInsets.only(left: 12, top: 8, bottom: 8),
                     child: Text(
-                      "MENU GENERAL",
+                      context.tr('sidebar_menu_general'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        color: isDarkMode
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                         letterSpacing: 0.8,
                       ),
                     ),
                   ),
-                  ..._currentMenuItems.map((item) {
+                  ...menuItems.map((item) {
                     final String path = item['path']?.toString() ?? '';
-                    final isActive = widget.currentPathname == path || 
-                        (path != '/admin' && widget.currentPathname.startsWith(path));
+                    final isActive = widget.currentPathname == path ||
+                        (path != '/admin' &&
+                            widget.currentPathname.startsWith(path));
                     final IconData icon = (item['icon'] is IconData)
                         ? item['icon']
                         : Icons.chevron_right_rounded;
@@ -269,18 +288,26 @@ class SideBarWidgetState extends State<SideBarWidget> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 4),
                       child: ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        tileColor: isActive ? activeBgColor : Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        tileColor:
+                            isActive ? activeBgColor : Colors.transparent,
                         leading: Icon(
                           icon,
-                          color: isActive ? primaryColor : (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600),
+                          color: isActive
+                              ? primaryColor
+                              : (isDarkMode
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600),
                           size: 20,
                         ),
                         title: Text(
                           item['nameKey'] ?? item['name'] ?? '',
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                            fontWeight: isActive
+                                ? FontWeight.bold
+                                : FontWeight.w500,
                             color: isActive ? primaryColor : textColor,
                           ),
                         ),
@@ -298,36 +325,47 @@ class SideBarWidgetState extends State<SideBarWidget> {
                 ],
 
                 Padding(
-                  padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+                  padding:
+                      const EdgeInsets.only(left: 12, top: 8, bottom: 8),
                   child: Text(
-                    "NAVIGATION APPLICATIVE",
+                    context.tr('sidebar_nav_applicative'),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      color: isDarkMode
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
                       letterSpacing: 0.8,
                     ),
                   ),
                 ),
 
-                ..._accueil.map((item) {
+                ...accueilItems.map((item) {
                   final String path = item['path']?.toString() ?? '';
                   final isActive = widget.currentPathname == path;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 4),
                     child: ListTile(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      tileColor: isActive ? activeBgColor : Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      tileColor:
+                          isActive ? activeBgColor : Colors.transparent,
                       leading: Icon(
                         item['icon'] as IconData,
-                        color: isActive ? primaryColor : (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600),
+                        color: isActive
+                            ? primaryColor
+                            : (isDarkMode
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600),
                         size: 20,
                       ),
                       title: Text(
                         item['nameKey'] ?? '',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isActive
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                           color: isActive ? primaryColor : textColor,
                         ),
                       ),
@@ -350,11 +388,16 @@ class SideBarWidgetState extends State<SideBarWidget> {
           Padding(
             padding: const EdgeInsets.all(10),
             child: ListTile(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              leading: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
-              title: const Text(
-                "Déconnexion",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.redAccent),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              leading: const Icon(Icons.logout_rounded,
+                  color: Colors.redAccent, size: 20),
+              title: Text(
+                context.tr('deconnexion'),
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.redAccent),
               ),
               onTap: () {
                 widget.onLogout();

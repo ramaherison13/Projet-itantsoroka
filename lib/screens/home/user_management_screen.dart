@@ -354,7 +354,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
       itemCount: filteredUsers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final u = filteredUsers[index];
         if (u is! Map) return const SizedBox.shrink();
@@ -489,7 +489,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildInitials(name, size),
+          errorBuilder: (_, _, _) => _buildInitials(name, size),
         ),
       );
     }

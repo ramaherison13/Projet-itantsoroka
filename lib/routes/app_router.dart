@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 // Layouts
 import '../layouts/admin/admin_layout.dart';
@@ -8,6 +9,10 @@ import '../layouts/main_layout.dart';
 // Écrans - Post / Actualités
 import '../screens/post/post_page.dart';
 import '../services/territory_service.dart';
+
+// Auth & Rôles
+import '../providers/auth_provider.dart';
+import '../screens/home/role_dashboard_screen.dart';
 
 // Écrans - Offre & Bureau de Projet
 import '../screens/offre_std/offre_std_page.dart';
@@ -26,6 +31,7 @@ import '../screens/administration/admin_user_list_screen.dart';
 import '../screens/administration/acte_type_management_screen.dart';
 import '../screens/administration/role_screen.dart';
 import '../screens/administration/user_password_management_screen.dart';
+import '../screens/administration/affiliation_page.dart';
 
 // Écrans - Authentification
 import '../screens/authentification/check_id_card_screen.dart';
@@ -68,6 +74,33 @@ class AppRouter {
     initialLocation: '/admin',
     errorBuilder: (context, state) =>
         const Scaffold(body: Center(child: Text('Error'))),
+
+    // ── Redirect global basé sur les rôles ────────────────────────────────
+    redirect: (context, state) {
+      final path = state.uri.path;
+
+      // Ne pas intercepter les routes d'authentification ni d'erreur
+      if (path.startsWith('/auth/') || path == '/unauthorized') return null;
+
+      // Lire l'état d'authentification depuis le provider
+      try {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        if (!auth.isInitialized) return null;
+
+        // Si non authentifié, laisser passer vers les pages publiques
+        if (!auth.isAuthenticated || auth.user == null) return null;
+
+        // Après la connexion (retour de /auth/login vers /), rediriger vers homeRoute
+        if (path == '/' && auth.isAuthenticated) {
+          final homeRoute = auth.homeRoute;
+          if (homeRoute != '/') return homeRoute;
+        }
+      } catch (_) {
+        // Provider non disponible dans ce contexte
+      }
+      return null;
+    },
+
     routes: [
       // Routes principales avec le Layout principal
       ShellRoute(
@@ -223,12 +256,56 @@ class AppRouter {
       // Pages utilitaires ou indépendantes
       GoRoute(
         path: '/unauthorized',
-        builder: (context, state) =>
-            const Scaffold(body: Center(child: Text('Not Implemented'))),
+        builder: (context, state) => Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.lock_outline_rounded, size: 64, color: Color(0xFFE65100)),
+                const SizedBox(height: 16),
+                const Text('Accès non autorisé', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                const Text('Vous n\'avez pas les permissions nécessaires.', textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => context.go('/'),
+                  child: const Text('Retour à l\'accueil'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       GoRoute(
         path: '/profile/edit',
         builder: (context, state) => const EditProfileScreen(),
+      ),
+
+      // ── Tableaux de bord par rôle (/dashboard/*) ───────────────────────
+      GoRoute(
+        path: '/dashboard/chef-district',
+        builder: (context, state) =>
+            const RoleDashboardScreen(role: 'CHEF_DISTRICT'),
+      ),
+      GoRoute(
+        path: '/dashboard/adjoint-district',
+        builder: (context, state) =>
+            const RoleDashboardScreen(role: 'ADJOINT_DISTRICT'),
+      ),
+      GoRoute(
+        path: '/dashboard/std',
+        builder: (context, state) =>
+            const RoleDashboardScreen(role: 'STD'),
+      ),
+      GoRoute(
+        path: '/dashboard/ctd',
+        builder: (context, state) =>
+            const RoleDashboardScreen(role: 'CTD'),
+      ),
+      GoRoute(
+        path: '/dashboard/partenaire',
+        builder: (context, state) =>
+            const RoleDashboardScreen(role: 'PARTENAIRE'),
       ),
       GoRoute(
         path: '/modules',
@@ -323,6 +400,12 @@ class AppRouter {
             path: '/idistrika/doleance',
             builder: (context, state) => const Scaffold(
               body: Center(child: Text('DoleanceModule Not Implemented')),
+            ),
+          ),
+          GoRoute(
+            path: '/idistrika/collecte-besoins',
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('CollecteBesoins Not Implemented')),
             ),
           ),
 
@@ -428,9 +511,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/admin/affiliation',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('AffiliationPage Not Implemented')),
-            ),
+            builder: (context, state) => const AffiliationPage(),
           ),
         ],
       ),

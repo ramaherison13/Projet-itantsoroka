@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/core/admin_theme.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 import 'package:itantsoroka/services/user_service.dart';
 import 'package:itantsoroka/services/citizens_service.dart';
 import 'package:itantsoroka/services/role_service.dart';
@@ -33,7 +34,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
   int _totalCount = 0;
   static const int _pageSize = 10;
   String _searchQuery = '';
-  String _roleFilter = 'Tous';
+  String _roleFilter = '__tous__';
   Map<String, dynamic>? _selectedUser;
 
   final TextEditingController _searchCtrl = TextEditingController();
@@ -199,7 +200,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
             phone.contains(q);
 
         final roles = _getUserRoles(u);
-        final matchRole = _roleFilter == 'Tous' ||
+        final matchRole = _roleFilter == '__tous__' ||
             roles.any((r) => r.toString().toLowerCase().contains(
                   _roleFilter.toLowerCase(),
                 ));
@@ -222,7 +223,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
   }
 
   List<String> _getUniqueRoles() {
-    final Set<String> roles = {'Tous'};
+    final Set<String> roles = {'__tous__'};
     for (final u in _users) {
       roles.addAll(_getUserRoles(u));
     }
@@ -365,7 +366,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Gestion des Utilisateurs',
+                  context.tr('user_gestion_titre'),
                   style: TextStyle(
                     fontSize: isMobile ? 14 : 16,
                     fontWeight: FontWeight.bold,
@@ -375,7 +376,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
                   ),
                 ),
                 Text(
-                  '${_users.length} compte${_users.length != 1 ? 's' : ''} enregistré${_users.length != 1 ? 's' : ''}',
+                  '${_users.length} ${context.tr('user_gestion_sous_titre')}',
                   style: TextStyle(
                     fontSize: 11,
                     color: isDark
@@ -398,7 +399,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
                         : AdminTheme.textSecondary,
                     size: 20),
                 onPressed: _loadUsers,
-                tooltip: 'Actualiser',
+                tooltip: context.tr('actualiser'),
               ),
               const SizedBox(width: 4),
               // Créer utilisateur
@@ -415,8 +416,8 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
                 icon: const Icon(Icons.person_add_rounded, size: 17),
                 label: isMobile
                     ? const SizedBox.shrink()
-                    : const Text('Créer',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    : Text(context.tr('creer'),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -448,7 +449,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
                     ? AdminTheme.textPrimaryDark
                     : AdminTheme.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Rechercher par nom, email, CIN...',
+              hintText: context.tr('user_rechercher_hint'),
               hintStyle: TextStyle(
                   fontSize: 13,
                   color: isDark
@@ -516,11 +517,12 @@ class _AdminUserListScreenState extends State<AdminUserListScreen>
                 itemBuilder: (context, i) {
                   final role = uniqueRoles[i];
                   final isSelected = _roleFilter == role;
+                  final roleLabel = role == '__tous__' ? context.tr('tous') : role;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     child: FilterChip(
                       label: Text(
-                        role,
+                        roleLabel,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -1046,16 +1048,16 @@ class _TableHeader extends StatelessWidget {
             color: isDark ? AdminTheme.borderDark : AdminTheme.borderLight),
       ),
       child: Row(
-        children: const [
-          SizedBox(width: 56), // Avatar
-          SizedBox(width: 10),
-          Expanded(flex: 2, child: _TH('Nom & Prénom')),
-          Expanded(flex: 2, child: _TH('Email')),
-          Expanded(flex: 1, child: _TH('CIN')),
-          Expanded(flex: 1, child: _TH('Téléphone')),
-          Expanded(flex: 2, child: _TH('Adresse')),
-          Expanded(flex: 1, child: _TH('Rôle(s)')),
-          SizedBox(width: 40), // Actions
+        children: [
+          const SizedBox(width: 56), // Avatar
+          const SizedBox(width: 10),
+          Expanded(flex: 2, child: _TH(context.tr('user_nom_prenom'))),
+          Expanded(flex: 2, child: _TH(context.tr('user_email'))),
+          Expanded(flex: 1, child: _TH(context.tr('user_cin'))),
+          Expanded(flex: 1, child: _TH(context.tr('user_telephone'))),
+          Expanded(flex: 2, child: _TH(context.tr('user_adresse'))),
+          Expanded(flex: 1, child: _TH(context.tr('user_roles'))),
+          const SizedBox(width: 40), // Actions
         ],
       ),
     );

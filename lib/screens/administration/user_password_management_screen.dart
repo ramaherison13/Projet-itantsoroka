@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/core/admin_theme.dart';
+import 'package:itantsoroka/l10n/app_localization.dart';
 import 'package:itantsoroka/services/user_service.dart';
 import 'package:itantsoroka/services/citizens_service.dart';
 
@@ -305,7 +306,7 @@ class _UserPasswordManagementScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Gestion des Mots de Passe',
+                  context.tr('pwd_gestion_titre'),
                   style: TextStyle(
                     fontSize: isMobile ? 14 : 16,
                     fontWeight: FontWeight.bold,
@@ -315,7 +316,7 @@ class _UserPasswordManagementScreenState
                   ),
                 ),
                 Text(
-                  'Réinitialiser les accès utilisateurs',
+                  context.tr('pwd_gestion_sous_titre'),
                   style: TextStyle(
                     fontSize: 11,
                     color: isDark
@@ -333,7 +334,7 @@ class _UserPasswordManagementScreenState
                     : AdminTheme.textSecondary,
                 size: 20),
             onPressed: loadUsers,
-            tooltip: 'Actualiser',
+            tooltip: context.tr('actualiser'),
           ),
         ],
       ),
@@ -447,7 +448,7 @@ class _UserPasswordManagementScreenState
                 ? AdminTheme.textPrimaryDark
                 : AdminTheme.textPrimary),
         decoration: InputDecoration(
-          hintText: 'Rechercher par nom, email, CIN...',
+          hintText: context.tr('user_rechercher_hint'),
           hintStyle: TextStyle(
               fontSize: 13,
               color: isDark ? AdminTheme.textMutedDark : AdminTheme.textMuted),
@@ -484,7 +485,7 @@ class _UserPasswordManagementScreenState
     if (filteredUsers.isEmpty) {
       return Center(
         child: Text(
-          'Aucun utilisateur trouvé',
+          context.tr('user_aucun_trouve'),
           style: TextStyle(
               color:
                   isDark ? AdminTheme.textSecondaryDark : AdminTheme.textSecondary),
@@ -493,7 +494,7 @@ class _UserPasswordManagementScreenState
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: EdgeInsets.fromLTRB(8, 8, 8, isMobile ? 100 : 8),
       itemCount: filteredUsers.length,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, index) {
@@ -664,7 +665,7 @@ class _UserPasswordManagementScreenState
             ),
             const SizedBox(height: 20),
             Text(
-              'Sélectionnez un utilisateur',
+              context.tr('pwd_selectionner'),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -674,7 +675,7 @@ class _UserPasswordManagementScreenState
             ),
             const SizedBox(height: 8),
             Text(
-              'Choisissez un utilisateur dans la liste pour réinitialiser son mot de passe.',
+              context.tr('pwd_choisir_hint'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -785,7 +786,7 @@ class _UserPasswordManagementScreenState
         const SizedBox(height: 24),
 
         // ── Nouveau mot de passe ───────────────────────────────────
-        Text('Nouveau mot de passe',
+        Text(context.tr('pwd_nouveau'),
             style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -802,7 +803,7 @@ class _UserPasswordManagementScreenState
                   : AdminTheme.textPrimary),
           decoration: _inputDecoration(
             isDark: isDark,
-            hint: 'Minimum 8 caractères...',
+            hint: context.tr('pwd_hint_nouveau'),
             prefixIcon: Icons.lock_outline_rounded,
             suffix: IconButton(
               icon: Icon(
@@ -850,7 +851,7 @@ class _UserPasswordManagementScreenState
         const SizedBox(height: 16),
 
         // ── Confirmer mot de passe ────────────────────────────────
-        Text('Confirmer le mot de passe',
+        Text(context.tr('pwd_confirmer'),
             style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -867,7 +868,7 @@ class _UserPasswordManagementScreenState
                   : AdminTheme.textPrimary),
           decoration: _inputDecoration(
             isDark: isDark,
-            hint: 'Répéter le mot de passe...',
+            hint: context.tr('pwd_hint_confirmer'),
             prefixIcon: Icons.lock_outline_rounded,
             suffix: IconButton(
               icon: Icon(
@@ -902,8 +903,8 @@ class _UserPasswordManagementScreenState
                 const SizedBox(width: 4),
                 Text(
                   passwordsMatch
-                      ? 'Les mots de passe correspondent'
-                      : 'Les mots de passe ne correspondent pas',
+                      ? context.tr('pwd_correspond')
+                      : context.tr('pwd_ne_correspond_pas'),
                   style: TextStyle(
                     fontSize: 12,
                     color: passwordsMatch
@@ -930,7 +931,7 @@ class _UserPasswordManagementScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Exigences de sécurité :',
+              Text(context.tr('pwd_exigences'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -966,8 +967,8 @@ class _UserPasswordManagementScreenState
                   _showFormPanel = false;
                 }),
                 icon: const Icon(Icons.close_rounded, size: 16),
-                label: const Text('Annuler',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                label: Text(context.tr('annuler'),
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(width: 12),
@@ -991,7 +992,7 @@ class _UserPasswordManagementScreenState
                             color: Colors.white, strokeWidth: 2))
                     : const Icon(Icons.lock_reset_rounded, size: 16),
                 label: Text(
-                  loading ? 'Traitement...' : 'Réinitialiser',
+                  loading ? context.tr('traitement') : context.tr('pwd_reinitialiser'),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
