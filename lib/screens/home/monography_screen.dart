@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:itantsoroka/widgets/monographie/monographie_map_widget.dart';
+import '../../l10n/app_localization.dart';
 
 // ── Couleur verte principale ────────────────────────────────────────────────
 const _kGreen = Color(0xFF00C853);
@@ -141,21 +142,7 @@ class _MonographieScreenState extends State<MonographieScreen>
   }
 
   String _getLocalizedText(dynamic text) {
-    if (text == null) return "";
-    if (text is String) return text;
-    if (text is Map) {
-      final fr = text['fr'];
-      if (fr != null && fr.toString().isNotEmpty) return fr.toString();
-      final mg = text['mg'];
-      if (mg != null && mg.toString().isNotEmpty) return mg.toString();
-      final en = text['en'];
-      if (en != null && en.toString().isNotEmpty) return en.toString();
-      if (text.values.isNotEmpty && text.values.first != null) {
-        return text.values.first.toString();
-      }
-      return "";
-    }
-    return text.toString();
+    return context.trDynamic(text);
   }
 
   Future<dynamic> _getTerritoryByFormattedId(String? id) async {
@@ -295,11 +282,12 @@ class _MonographieScreenState extends State<MonographieScreen>
           final m = match;
           setState(() {
             monographieData = {
-              "file": _getLocalizedText(m['file'] ?? m['lien']),
-              "resume": _getLocalizedText(m['resume'] ?? m['summary']),
-              "description": _getLocalizedText(m['description']),
-              "formatted_id": _getLocalizedText(m['formatted_id'] ?? m['code'] ?? widgetId),
-              "nom": _getLocalizedText(m['nom'] ?? m['name'] ?? territoryInfo?['name'] ?? rawTerritoryName),
+              "file": m['file'] ?? m['lien'],
+              "resume": m['resume'] ?? m['summary'],
+              "description": m['description'],
+              "formatted_id": m['formatted_id'] ?? m['code'] ?? widgetId,
+              "nom": m['nom'] ?? m['name'] ?? territoryInfo?['name'] ?? rawTerritoryName,
+              ...m,
             };
           });
         }
@@ -657,17 +645,17 @@ class _MonographieScreenState extends State<MonographieScreen>
                           color: _textMain(isDark),
                           height: 1.3,
                         ),
-                        children: const [
-                          TextSpan(text: "Rechercher une monographie de\n"),
-                          TextSpan(text: "District ", style: TextStyle(color: _kGreen)),
-                          TextSpan(text: "ou "),
-                          TextSpan(text: "Commune", style: TextStyle(color: _kGreen)),
+                        children: [
+                          TextSpan(text: "${context.tr('rech_mono')} "),
+                          TextSpan(text: "${context.tr('district')} ", style: const TextStyle(color: _kGreen)),
+                          TextSpan(text: "${context.tr('ou')} "),
+                          TextSpan(text: context.tr('commune'), style: const TextStyle(color: _kGreen)),
                         ],
                       ),
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      "Rechercher efficacement les districts et les communes disposant d'une monographie",
+                      context.tr('rech_effic_com'),
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 14, color: _textMuted(isDark)),
                     ),
@@ -693,7 +681,7 @@ class _MonographieScreenState extends State<MonographieScreen>
                                 onChanged: (v) => setState(() => _searchTerm = v),
                                 style: TextStyle(color: _textMain(isDark), fontSize: 14.5),
                                 decoration: InputDecoration(
-                                  hintText: "Rechercher une monographie (ex. : Ambalavao)",
+                                  hintText: context.tr('rech_monog'),
                                   hintStyle: TextStyle(color: _textMuted(isDark), fontSize: 14),
                                   border: InputBorder.none,
                                   isDense: true,
@@ -715,9 +703,9 @@ class _MonographieScreenState extends State<MonographieScreen>
                                 dropdownColor: _cardBg(isDark),
                                 icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white70 : Colors.black54, size: 20),
                                 style: TextStyle(color: _textMain(isDark), fontSize: 13.5, fontWeight: FontWeight.w500),
-                                items: const [
-                                  DropdownMenuItem(value: "districts", child: Text("District")),
-                                  DropdownMenuItem(value: "communes", child: Text("Commune")),
+                                items: [
+                                  DropdownMenuItem(value: "districts", child: Text(context.tr('district'))),
+                                  DropdownMenuItem(value: "communes", child: Text(context.tr('commune'))),
                                 ],
                                 onChanged: (val) {
                                   if (val != null) {
@@ -754,7 +742,7 @@ class _MonographieScreenState extends State<MonographieScreen>
               SliverFillRemaining(
                 child: Center(
                   child: Text(
-                    _searchTerm.isNotEmpty ? "Aucun résultat pour \"$_searchTerm\"" : "Aucun résultat",
+                    _searchTerm.isNotEmpty ? "${context.tr('auc_resul')} \"$_searchTerm\"" : context.tr('aucun_resultat'),
                     style: TextStyle(color: _textMuted(isDark), fontSize: 15),
                   ),
                 ),
@@ -811,7 +799,7 @@ class _MonographieScreenState extends State<MonographieScreen>
                                       const SizedBox(width: 8),
                                       Flexible(
                                         child: Text(
-                                          "${displayed.length} monographie(s) disponible(s)",
+                                          "${displayed.length} ${context.tr('mono_dispo')}",
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
@@ -943,7 +931,7 @@ class _MonographieScreenState extends State<MonographieScreen>
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildDetailPage(bool isCommune, bool isDark) {
     final rawTitle = _getLocalizedText(widget.territoire);
-    final title = rawTitle.isNotEmpty ? rawTitle.toUpperCase() : (isCommune ? "COMMUNE" : "DISTRICT");
+    final title = rawTitle.isNotEmpty ? rawTitle.toUpperCase() : (isCommune ? context.tr('commune').toUpperCase() : context.tr('district').toUpperCase());
     final fileStr = _getLocalizedText(monographieData["file"]);
     final resumeStr = _getLocalizedText(monographieData["resume"]);
     final descStr = _getLocalizedText(monographieData["description"]);
@@ -1037,19 +1025,19 @@ class _MonographieScreenState extends State<MonographieScreen>
                             ),
                             child: Column(
                               children: [
-                                _anchorMenuItem("# Résumé", () => _scrollToKey(_resumeKey), isDark),
+                                _anchorMenuItem("# ${context.tr('desc')}", () => _scrollToKey(_resumeKey), isDark),
                                 Divider(height: 1, color: _border(isDark)),
-                                _anchorMenuItem("# Monographie", () => _scrollToKey(_monographieKey), isDark),
+                                _anchorMenuItem("# ${context.tr('monograp')}", () => _scrollToKey(_monographieKey), isDark),
                                 Divider(height: 1, color: _border(isDark)),
-                                _anchorMenuItem(isCommune ? "# District Parent" : "# Communes Affiliées", () => _scrollToKey(_territoiresKey), isDark),
+                                _anchorMenuItem(isCommune ? "# ${context.tr('district')}" : "# ${context.tr('stats_communes_label')}", () => _scrollToKey(_territoiresKey), isDark),
                                 Divider(height: 1, color: _border(isDark)),
-                                _anchorMenuItem("# Expertises STD", () => _scrollToKey(_stdKey), isDark),
+                                _anchorMenuItem("# ${context.tr('nav_bar.offres')}", () => _scrollToKey(_stdKey), isDark),
                                 Divider(height: 1, color: _border(isDark)),
-                                _anchorMenuItem("# Actualités", () => _scrollToKey(_actuKey), isDark),
+                                _anchorMenuItem("# ${context.tr('nav_bar.actualites')}", () => _scrollToKey(_actuKey), isDark),
                                 Divider(height: 1, color: _border(isDark)),
-                                _anchorMenuItem("# Projets", () => _scrollToKey(_projKey), isDark),
+                                _anchorMenuItem("# ${context.tr('nav_bar.projets')}", () => _scrollToKey(_projKey), isDark),
                                 Divider(height: 1, color: _border(isDark)),
-                                _anchorMenuItem("# Documents", () => _scrollToKey(_docKey), isDark),
+                                _anchorMenuItem("# ${context.tr('nav_bar.documents')}", () => _scrollToKey(_docKey), isDark),
                               ],
                             ),
                           ),
@@ -1212,7 +1200,7 @@ class _MonographieScreenState extends State<MonographieScreen>
                 Icon(hasFile ? Icons.download_rounded : Icons.lock_outline_rounded, color: hasFile ? Colors.white : disabledFg, size: 18),
                 const SizedBox(width: 10),
                 Text(
-                  "Télécharger la monographie",
+                  context.tr('tel_monog'),
                   style: TextStyle(color: hasFile ? Colors.white : disabledFg, fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ],
@@ -1228,7 +1216,7 @@ class _MonographieScreenState extends State<MonographieScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.account_balance_outlined, "Communes affiliées", isDark),
+        _sectionHeader(Icons.account_balance_outlined, context.tr('stats_communes_label'), isDark),
         const SizedBox(height: 16),
         if (loadingCommunes)
           const CircularProgressIndicator(color: _kGreen)
@@ -1285,7 +1273,7 @@ class _MonographieScreenState extends State<MonographieScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.location_city_outlined, "District Parent", isDark),
+        _sectionHeader(Icons.location_city_outlined, context.tr('district'), isDark),
         const SizedBox(height: 16),
         if (loadingParentDistrict)
           const CircularProgressIndicator(color: _kGreen)
@@ -1316,7 +1304,7 @@ class _MonographieScreenState extends State<MonographieScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.layers_outlined, "Expertises STD à disposition", isDark),
+        _sectionHeader(Icons.layers_outlined, context.tr('nav_bar.offres'), isDark),
         const SizedBox(height: 16),
         if (loadingStdExpertises)
           const CircularProgressIndicator(color: _kGreen)
@@ -1346,11 +1334,10 @@ class _MonographieScreenState extends State<MonographieScreen>
 
   Widget _buildActualitesSection(bool isCommune) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final title = isCommune ? "Les actualités de la commune" : "Les actualités du district";
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.rss_feed_rounded, title, isDark),
+        _sectionHeader(Icons.rss_feed_rounded, context.tr('nav_bar.actualites'), isDark),
         const SizedBox(height: 20),
         if (loadingActu)
           const CircularProgressIndicator(color: _kGreen)
@@ -1384,11 +1371,10 @@ class _MonographieScreenState extends State<MonographieScreen>
 
   Widget _buildProjetsSection(bool isCommune) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final title = isCommune ? "Les projets de la commune" : "Les projets du district";
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.inventory_2_outlined, title, isDark),
+        _sectionHeader(Icons.inventory_2_outlined, context.tr('nav_bar.projets'), isDark),
         const SizedBox(height: 20),
         if (loadingProjects)
           const CircularProgressIndicator(color: _kGreen)
@@ -1422,11 +1408,10 @@ class _MonographieScreenState extends State<MonographieScreen>
 
   Widget _buildDocumentsSection(bool isCommune) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final title = isCommune ? "Les Documents commune" : "Les Documents district";
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(Icons.description_outlined, title, isDark),
+        _sectionHeader(Icons.description_outlined, context.tr('nav_bar.documents'), isDark),
         const SizedBox(height: 20),
         if (loadingDocuments)
           const CircularProgressIndicator(color: _kGreen)

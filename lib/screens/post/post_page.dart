@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../widgets/publication/blog_post_widget.dart';
+import '../../l10n/app_localization.dart';
 
 // ─── Couleurs principales ────────────────────────────────────────────────────
 const _kGreen = Color(0xFF098E00);
@@ -361,23 +362,23 @@ class _PostPageWidgetState extends State<PostPageWidget>
                         ),
                       ),
                       const SizedBox(width: 14),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Actualités & Événements',
-                              style: TextStyle(
+                              context.tr('actualites_title'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 21,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.2,
                               ),
                             ),
-                            SizedBox(height: 3),
+                            const SizedBox(height: 3),
                             Text(
-                              'Informations, annonces officielles et initiatives',
-                              style: TextStyle(
+                              context.tr('actualites_sub'),
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12.5,
                               ),
@@ -410,7 +411,7 @@ class _PostPageWidgetState extends State<PostPageWidget>
                       },
                       style: const TextStyle(fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: 'Rechercher une actualité...',
+                        hintText: context.tr('rechercher_actualite'),
                         hintStyle: TextStyle(
                           color: Colors.grey.shade400,
                           fontSize: 14,

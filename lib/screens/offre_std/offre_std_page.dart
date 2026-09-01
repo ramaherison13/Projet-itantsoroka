@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/territory_service.dart';
+import '../../l10n/app_localization.dart';
 
 // Modèles de données
 class Offre {
@@ -366,7 +367,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Offres d'appui",
+                        context.tr('nav_bar.offres'),
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -375,7 +376,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "Découvrez les services et le support technique disponibles",
+                        context.tr('offr_appui.decouvre_service'),
                         style: TextStyle(
                           fontSize: 14,
                           color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF64748B),
@@ -388,7 +389,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
                   ElevatedButton.icon(
                     onPressed: _openCreateModal,
                     icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                    label: const Text("Ajouter une offre", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    label: Text(context.tr('ajouter'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF098E00),
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -425,7 +426,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
                       Icon(Icons.filter_list_rounded, size: 20, color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF64748B)),
                       const SizedBox(width: 8),
                       Text(
-                        "Filtres",
+                        context.tr('filtre'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'document_card_widget.dart'; // Assurez-vous d'importer votre carte de document
+import '../../l10n/app_localization.dart';
 
 class TousDocumentsWidget extends StatefulWidget {
   final String? initialTheme;
@@ -289,7 +290,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
 
     // Filtrage et tri local
     final filteredDocuments = _documents.where((doc) {
-      final title = doc['title']?.toString().toLowerCase() ?? '';
+      final title = context.trDynamic(doc['title'] ?? doc['titre']).toLowerCase();
       final matchesSearch = title.contains(_searchController.text.toLowerCase());
       final matchesDate = _matchesDateFilter(doc['date'] ?? '');
 
@@ -332,7 +333,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text("Filtres", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          Text(context.tr('filtre'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                           IconButton(
                             icon: const Icon(Icons.close),
                             onPressed: () => setState(() => _showMobileFilters = false),
@@ -361,7 +362,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                             controller: _searchController,
                             style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white : const Color(0xFF0F172A)),
                             decoration: InputDecoration(
-                              hintText: 'Rechercher un document...',
+                              hintText: context.tr('rech_doc'),
                               hintStyle: TextStyle(fontSize: 13, color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade500),
                               prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF098E00)),
                               suffixIcon: _searchController.text.isNotEmpty
@@ -397,7 +398,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                               children: [
                                 const Icon(Icons.tune, size: 16, color: Colors.green),
                                 const SizedBox(width: 8),
-                                const Text("Filtres", style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text(context.tr('filtre'), style: const TextStyle(fontWeight: FontWeight.bold)),
                                 if (_activeFiltersCount > 0) ...[
                                   const SizedBox(width: 6),
                                   Container(
@@ -411,14 +412,14 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                             if (_activeFiltersCount > 0)
                               TextButton(
                                 onPressed: _clearAllFilters,
-                                child: const Text("Effacer", style: TextStyle(color: Colors.red, fontSize: 12)),
+                                child: Text(context.tr('annuler'), style: const TextStyle(color: Colors.red, fontSize: 12)),
                               ),
                           ],
                         ),
                         const Divider(),
 
                         // Section Date
-                        const Text("Date", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text(context.tr('date'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -458,11 +459,11 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Section Catégories
-                        const Text("Catégorie", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        // Section Catégorie
+                        Text(context.tr('categorie'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         const SizedBox(height: 8),
                         _categoriesLoading
-                            ? const Text("Chargement...", style: TextStyle(fontSize: 12))
+                            ? Text(context.tr('chargement'), style: const TextStyle(fontSize: 12))
                             : Column(
                                 children: _categories.map((cat) {
                                   final name = cat['name'] ?? '';
@@ -482,11 +483,11 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                               ),
                         const SizedBox(height: 16),
 
-                        // Section Thèmes
-                        const Text("Thème", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        // Section Thème
+                        Text(context.tr('themes_label'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         const SizedBox(height: 8),
                         _themesLoading
-                            ? const Text("Chargement...", style: TextStyle(fontSize: 12))
+                            ? Text(context.tr('chargement'), style: const TextStyle(fontSize: 12))
                             : Column(
                                 children: _themes.map((th) {
                                   final name = th['name'] ?? '';
@@ -507,7 +508,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                         const SizedBox(height: 16),
 
                         // Ordre alphabétique
-                        const Text("Ordre alphabétique", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text(context.tr('ordre_alpha'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 5,
@@ -605,7 +606,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
             child: Column(
               children: [
                 AppBar(
-                  title: Text(_selectedThemes.length == 1 ? _selectedThemes.first : "Tous les documents"),
+                  title: Text(_selectedThemes.length == 1 ? context.trDynamic(_selectedThemes.first) : context.tr('tous_doc')),
                   backgroundColor: Colors.transparent,
                   elevation: 0,
                   automaticallyImplyLeading: false,
@@ -663,7 +664,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                                         ElevatedButton.icon(
                                           onPressed: _clearAllFilters,
                                           icon: const Icon(Icons.clear_rounded, size: 16),
-                                          label: const Text("Réinitialiser"),
+                                          label: Text(context.tr('annuler')),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.red.shade50,
                                             foregroundColor: Colors.red.shade700,
@@ -678,7 +679,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                                   const SizedBox(height: 16),
                                   Expanded(
                                     child: filteredDocuments.isEmpty
-                                        ? const Center(child: Text("Aucun document trouvé"))
+                                        ? Center(child: Text(context.tr('auc_doc_typ')))
                                         : LayoutBuilder(
                                             builder: (context, constraints) {
                                               int crossAxisCount = 1;

@@ -95,4 +95,27 @@ extension TranslationExtension on BuildContext {
   String tr(String key) {
     return AppLocalization.of(this)?.translate(key) ?? key;
   }
+
+  String trDynamic(dynamic raw) {
+    if (raw == null) return "";
+    if (raw is Map) {
+      final code = AppLocalization.of(this)?.locale.languageCode ?? 'fr';
+      if (raw.containsKey(code) && raw[code] != null && raw[code].toString().isNotEmpty) {
+        return raw[code].toString();
+      }
+      final fr = raw['fr'];
+      if (fr != null && fr.toString().isNotEmpty) return fr.toString();
+      final mg = raw['mg'];
+      if (mg != null && mg.toString().isNotEmpty) return mg.toString();
+      final en = raw['en'];
+      if (en != null && en.toString().isNotEmpty) return en.toString();
+      if (raw.values.isNotEmpty && raw.values.first != null) {
+        return raw.values.first.toString();
+      }
+      return "";
+    }
+    final String str = raw.toString();
+    final translated = tr(str);
+    return translated != str ? translated : str;
+  }
 }

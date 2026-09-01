@@ -72,17 +72,23 @@ class TerritoryService {
 
   static Future<List<dynamic>?> _fetchTerritoryList(String path, String contextLabel, {String? fallbackPath}) async {
     Future<List<dynamic>?> tryPath(String p) async {
-      try {
-        final response = await http
-            .get(Uri.parse(_endpoint(p)), headers: headers)
-            .timeout(const Duration(seconds: 5));
-        if (response.statusCode != 200) return null;
-        final decoded = jsonDecode(response.body);
-        final data = _extractArray(decoded);
-        return data;
-      } catch (_) {
-        return null;
+      for (int attempt = 0; attempt < 2; attempt++) {
+        try {
+          final response = await http
+              .get(Uri.parse(_endpoint(p)), headers: headers)
+              .timeout(const Duration(seconds: 12));
+          if (response.statusCode != 200) continue;
+          final decoded = jsonDecode(response.body);
+          final data = _extractArray(decoded);
+          if (data != null && data.isNotEmpty) return data;
+        } catch (e) {
+          debugPrint('TerritoryService tentativ ${attempt + 1} échec pour $p ($contextLabel): $e');
+          if (attempt == 0) {
+            await Future.delayed(const Duration(milliseconds: 800));
+          }
+        }
       }
+      return null;
     }
 
     final result = await tryPath(path);
@@ -181,5 +187,74 @@ class TerritoryService {
 
   static Future<List<dynamic>?> getCommunesByDistrict(String districtFormattedId) async {
     return _fetchTerritoryList('/communes/district/$districtFormattedId', "des communes du district $districtFormattedId");
+  }
+
+  /// Retourne les comptages territoriaux [communesTotal, districtsTotal, regionsTotal]
+  /// via 3 requêtes légères parallèles (limit=1), sans télécharger toutes les données.
+  static Future<Map<String, int>> getTerritoryCountsOnly() async {
+    int extractTotal(dynamic body, {int fallbackListLen = 0}) {
+      if (body is Map) {
+        final tot = body['total'] ?? body['count'] ?? body['totalCount'];
+        if (tot is int) return tot;
+        if (tot != null) return int.tryParse(tot.toString()) ?? 0;
+        final data = body['data'] ?? body['results'] ?? body['items'];
+        if (data is List) return data.length;
+      } else if (body is List) {
+        return body.length;
+      }
+      return fallbackListLen;
+    }
+
+    try {
+      final results = await Future.wait([
+        // 1. Communes
+        () async {
+          if (_cachedCommunes != null && _cachedCommunes!.isNotEmpty) {
+            return _cachedCommunes!.length;
+          }
+          try {
+            final res = await http
+                .get(Uri.parse('$baseUrl/communes/basic?page=1&limit=1'), headers: headers)
+                .timeout(const Duration(seconds: 8));
+            if (res.statusCode == 200) return extractTotal(jsonDecode(res.body));
+          } catch (_) {}
+          return 0;
+        }(),
+        // 2. Districts
+        () async {
+          if (_cachedDistricts != null && _cachedDistricts!.isNotEmpty) {
+            return _cachedDistricts!.length;
+          }
+          try {
+            final res = await http
+                .get(Uri.parse('$baseUrl/districts/basic?page=1&limit=1'), headers: headers)
+                .timeout(const Duration(seconds: 8));
+            if (res.statusCode == 200) return extractTotal(jsonDecode(res.body));
+          } catch (_) {}
+          return 0;
+        }(),
+        // 3. Régions
+        () async {
+          if (_cachedRegions != null && _cachedRegions!.isNotEmpty) {
+            return _cachedRegions!.length;
+          }
+          try {
+            final res = await http
+                .get(Uri.parse('$baseUrl/regions/basic?page=1&limit=1'), headers: headers)
+                .timeout(const Duration(seconds: 8));
+            if (res.statusCode == 200) return extractTotal(jsonDecode(res.body));
+          } catch (_) {}
+          return 0;
+        }(),
+      ]);
+      return {
+        'communes': results[0],
+        'districts': results[1],
+        'regions': results[2],
+      };
+    } catch (e) {
+      debugPrint('getTerritoryCountsOnly error: $e');
+      return {'communes': 0, 'districts': 0, 'regions': 0};
+    }
   }
 }

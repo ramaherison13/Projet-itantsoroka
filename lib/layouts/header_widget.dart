@@ -1004,57 +1004,55 @@ class _HeaderWidgetState extends State<HeaderWidget>
                 },
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: isDarkMode ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ] : null,
-                        ),
-                        child: Image.asset(
-                          'assets/images/logo_dd_v3.png',
-                          height: 34,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          errorBuilder: (context, error, stackTrace) => Image.asset(
-                            'assets/images/logo_dd.png',
-                            height: 34,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
-                            errorBuilder: (ctx, err, _) => Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF098E00), Color(0xFF056B00)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: isDarkMode
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
                               ),
-                              child: const Center(
-                                child: Text(
-                                  'T',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                ),
+                            ]
+                          : null,
+                    ),
+                    child: Image.asset(
+                      'assets/images/logo_dd_v3.png',
+                      height: 34,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/images/logo_dd.png',
+                        height: 34,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (ctx, err, _) => Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF098E00), Color(0xFF056B00)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'T',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1063,17 +1061,20 @@ class _HeaderWidgetState extends State<HeaderWidget>
               if (isDesktop) ...[
                 const SizedBox(width: 32),
                 Expanded(
-                  child: Row(
-                    children: roleNavItems.map((item) {
-                      final bool isActive = currentPath == item.path ||
-                          (item.path != '/' && currentPath.startsWith(item.path));
-                      return _NavLink(
-                        label: _translateNavLabel(context, item.label),
-                        path: item.path,
-                        isActive: isActive,
-                        isDarkMode: isDarkMode,
-                      );
-                    }).toList(),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: roleNavItems.map((item) {
+                        final bool isActive = currentPath == item.path ||
+                            (item.path != '/' && currentPath.startsWith(item.path));
+                        return _NavLink(
+                          label: _translateNavLabel(context, item.label),
+                          path: item.path,
+                          isActive: isActive,
+                          isDarkMode: isDarkMode,
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
               ] else
@@ -1085,7 +1086,9 @@ class _HeaderWidgetState extends State<HeaderWidget>
                     ? _buildAuthenticatedActions(context, isActivated, user, isDarkMode)
                     : _buildUnauthenticatedActions(context, isDarkMode),
               ] else ...[
-                // Sur mobile : uniquement l'icône thème + burger
+                // Sur mobile : Langue + Thème + Burger
+                const LanguageSettingWidget(isCompact: true),
+                const SizedBox(width: 4),
                 _buildThemeMenuButton(context, isDarkMode),
                 const SizedBox(width: 4),
                 IconButton(
@@ -1310,9 +1313,25 @@ class _HeaderWidgetState extends State<HeaderWidget>
   }
 
   Widget _buildMobileUnauthMenu(BuildContext context) {
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Langue / Teny :",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: isDarkMode ? Colors.white70 : const Color(0xFF444466),
+              ),
+            ),
+            const LanguageSettingWidget(),
+          ],
+        ),
+        const SizedBox(height: 14),
         OutlinedButton(
           onPressed: () => _closeMenuAndNavigate('/auth/login'),
           style: OutlinedButton.styleFrom(

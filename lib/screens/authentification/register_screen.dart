@@ -79,33 +79,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ];
 
     for (final url in endpoints) {
-      try {
-        final response = await http
-            .get(Uri.parse(url))
-            .timeout(const Duration(seconds: 8));
-        if (!mounted) return;
-        if (response.statusCode == 200) {
-          final raw = json.decode(response.body);
-          List<dynamic> extracted = [];
-          if (raw is List) {
-            extracted = raw;
-          } else if (raw['data'] is List) {
-            extracted = raw['data'];
-          } else if (raw['data'] is Map && raw['data']['data'] is List) {
-            extracted = raw['data']['data'];
-          } else if (raw['results'] is List) {
-            extracted = raw['results'];
-          } else if (raw['items'] is List) {
-            extracted = raw['items'];
+      for (int attempt = 0; attempt < 2; attempt++) {
+        try {
+          final response = await http
+              .get(Uri.parse(url))
+              .timeout(const Duration(seconds: 12));
+          if (!mounted) return;
+          if (response.statusCode == 200) {
+            final raw = json.decode(response.body);
+            List<dynamic> extracted = [];
+            if (raw is List) {
+              extracted = raw;
+            } else if (raw['data'] is List) {
+              extracted = raw['data'];
+            } else if (raw['data'] is Map && raw['data']['data'] is List) {
+              extracted = raw['data']['data'];
+            } else if (raw['results'] is List) {
+              extracted = raw['results'];
+            } else if (raw['items'] is List) {
+              extracted = raw['items'];
+            }
+            if (extracted.isNotEmpty) {
+              if (mounted) setState(() => communes = extracted);
+              break; // Succès — on arrête la boucle
+            }
           }
-          if (extracted.isNotEmpty) {
-            if (mounted) setState(() => communes = extracted);
-            break; // Succès — on arrête la boucle
-          }
+        } catch (e) {
+          debugPrint('loadCommunes tentativ ${attempt + 1} pour $url: $e');
+          if (attempt == 0) await Future.delayed(const Duration(milliseconds: 800));
         }
-      } catch (_) {
-        // Continue vers le prochain endpoint
       }
+      if (communes.isNotEmpty) break;
     }
 
     // Si toujours vide, on utilise la liste de secours

@@ -20,7 +20,7 @@ dependencies:
     sdk: flutter
   go_router: ^17.3.0
   provider: ^6.1.5+1
-  flutter_riverpod: ^3.4.2
+  # ÉTAPE 4 : flutter_riverpod supprimé (migré vers ChangeNotifier)
   connectivity_plus: ^7.3.1
   fl_chart: ^1.2.0
   lucide_icons: ^0.257.0
@@ -28,11 +28,13 @@ dependencies:
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
 
-  dio: any
-  geojson_vi: any
-  path_provider: any
-  url_launcher: any
+  # ÉTAPE 4 : versions épinglées (plus de 'any' — évite les conflits)
+  dio: ^5.7.0
+  geojson_vi: ^2.2.2
+  path_provider: ^2.1.5
+  url_launcher: ^6.3.1
   webview_flutter: ^4.10.0
+  geolocator: ^9.0.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -46,3 +48,8 @@ flutter:
     - assets/images/modules/
     - assets/images/tableaux_bord/
     - assets/images/centreRessource/
+    - lib/assets/images/
+    - lib/assets/images/home/
+    - lib/assets/images/modules/
+    - lib/assets/images/tableaux_bord/
+    - lib/assets/images/centreRessource/

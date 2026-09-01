@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/project_service.dart';
 import '../../services/territory_service.dart';
+import '../../l10n/app_localization.dart';
 
 class OfficeProjetScreen extends StatefulWidget {
   const OfficeProjetScreen({super.key});
@@ -277,7 +278,7 @@ class _OfficeProjetScreenState extends State<OfficeProjetScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Projets",
+                            context.tr('nav_bar.projets'),
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -318,7 +319,7 @@ class _OfficeProjetScreenState extends State<OfficeProjetScreen> {
                         children: [
                           const Icon(Icons.work_outline_rounded, size: 18),
                           const SizedBox(width: 8),
-                          const Text("Tous les projets", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                          Text(context.tr('tous_projets'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -348,7 +349,7 @@ class _OfficeProjetScreenState extends State<OfficeProjetScreen> {
                         children: [
                           const Icon(Icons.person_outline_rounded, size: 18),
                           const SizedBox(width: 8),
-                          const Text("Mes projets affiliés", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                          Text(context.tr('mes_projets'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

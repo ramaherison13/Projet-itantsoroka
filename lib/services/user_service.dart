@@ -25,6 +25,34 @@ class UserService {
     "550e8400-e29b-41d4-a716-446655440000",
   };
 
+  /// Retourne uniquement le **nombre total** d'utilisateurs inscrits.
+  /// N'effectue qu'UNE SEULE requête légère (limit=1) et extrait le champ `total`.
+  /// N'appelle jamais `enrichUsersWithCitizens()` → aucune erreur 404 citoyen.
+  static Future<int> getUsersCountOnly() async {
+    try {
+      final uri = Uri.parse('$baseUrl/users').replace(
+        queryParameters: {'page': '1', 'limit': '1'},
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 6));
+      if (response.statusCode < 200 || response.statusCode >= 300) return 0;
+      final body = jsonDecode(response.body);
+      if (body is Map) {
+        final total = body['total'] ?? body['count'] ?? body['totalCount'];
+        if (total is int) return total;
+        if (total != null) return int.tryParse(total.toString()) ?? 0;
+        // Fallback: longueur du tableau data
+        final data = body['data'] ?? body['users'];
+        if (data is List) return data.length;
+      } else if (body is List) {
+        return body.length;
+      }
+      return 0;
+    } catch (e) {
+      debugPrint('getUsersCountOnly error: $e');
+      return 0;
+    }
+  }
+
   static Future<dynamic> assignDefaultRole(String userId) async {
     try {
       final response = await http.post(

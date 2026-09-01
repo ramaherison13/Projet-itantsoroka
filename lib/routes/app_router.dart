@@ -65,13 +65,16 @@ import '../widgets/controle_legalite/dashboard_widget.dart';
 import '../widgets/gestion_document/gerer_document_widget.dart';
 import '../widgets/gestion_document/ajout_document_widget.dart';
 import '../widgets/gestion_document/tous_documents_widget.dart';
+import '../screens/common/coming_soon_screen.dart';
 
 class AppRouter {
   // Définition des routes de l'application
   // NOTE: Ne pas ajouter de navigatorKey manuels sur GoRouter ou ShellRoute en
   // go_router v17+ — cela crée des collisions de GlobalObjectKey internes.
   static final GoRouter router = GoRouter(
-    initialLocation: '/admin',
+    // Start at public home by default. Auth redirect will send authenticated users
+    // to their role-specific homeRoute after AuthProvider.restoreSession completes.
+    initialLocation: '/',
     errorBuilder: (context, state) =>
         const Scaffold(body: Center(child: Text('Error'))),
 
@@ -109,8 +112,9 @@ class AppRouter {
           GoRoute(path: '/', builder: (context, state) => const HomePage()),
           GoRoute(
             path: '/collecte',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('CollecteBesoins Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Collecte de besoins',
+              subtitle: 'Cette fonctionnalité est en cours de développement.',
             ),
           ),
           GoRoute(
@@ -161,26 +165,30 @@ class AppRouter {
           ),
           GoRoute(
             path: '/doleance',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Doleances Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Doléances',
+              subtitle: 'Le module de doléances sera bientôt disponible.',
             ),
           ),
           GoRoute(
             path: '/footer',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Footer Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Pied de page',
+              subtitle: 'Cette section est en cours de préparation.',
             ),
           ),
           GoRoute(
             path: '/doleances',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('SuiviDoleanceUser Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Suivi des doléances',
+              subtitle: 'Le suivi utilisateur est en cours de développement.',
             ),
           ),
           GoRoute(
             path: '/centreRessource',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('CentreRessource Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Centre de ressources',
+              subtitle: 'Le centre de ressources sera accessible prochainement.',
             ),
           ),
           GoRoute(
@@ -190,8 +198,9 @@ class AppRouter {
           ),
           GoRoute(
             path: '/theme/:themeId',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('ThemePage Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Thème',
+              subtitle: 'La page de thème est en cours de développement.',
             ),
           ),
           GoRoute(
@@ -201,8 +210,9 @@ class AppRouter {
           ),
           GoRoute(
             path: '/gestion',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Gestion Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Gestion',
+              subtitle: 'Le module de gestion est en cours d’implémentation.',
             ),
           ),
           GoRoute(
@@ -339,32 +349,37 @@ class AppRouter {
           ),
           GoRoute(
             path: '/idistrika/calendrier',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Calendrier Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Calendrier',
+              subtitle: 'Le calendrier des tournées sera disponible prochainement.',
             ),
           ),
           GoRoute(
             path: '/idistrika/rapportTpg',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('RapportTPG Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Rapport TPG',
+              subtitle: 'La génération et la consultation des rapports arrivent bientôt.',
             ),
           ),
           GoRoute(
             path: '/idistrika/Generer-rapport',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('GenererRapport Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Générer un rapport',
+              subtitle: 'La génération de rapport est en cours de développement.',
             ),
           ),
           GoRoute(
             path: '/idistrika/Details-rapport',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('DetailsRapport Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Détails du rapport',
+              subtitle: 'Le détail du rapport sera bientôt accessible.',
             ),
           ),
           GoRoute(
             path: '/idistrika/reunion',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('MeetingModule Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Réunions',
+              subtitle: 'Le module de réunions est en préparation.',
             ),
           ),
           GoRoute(
@@ -398,14 +413,16 @@ class AppRouter {
           ),
           GoRoute(
             path: '/idistrika/doleance',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('DoleanceModule Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Doléances',
+              subtitle: 'Le module de gestion des doléances est en cours de développement.',
             ),
           ),
           GoRoute(
             path: '/idistrika/collecte-besoins',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('CollecteBesoins Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Collecte de besoins',
+              subtitle: 'Le module de collecte de besoins sera bientôt disponible.',
             ),
           ),
 
@@ -443,22 +460,23 @@ class AppRouter {
           ),
           GoRoute(
             path: '/itantsorika/reunion',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('MeetingModule Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Réunions',
+              subtitle: 'La gestion des réunions est en cours d’implémentation.',
             ),
           ),
           GoRoute(
             path: '/itantsorika/editPublication/:type/:id',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('EditPublication Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Modifier une publication',
+              subtitle: 'L’édition des publications sera bientôt disponible.',
             ),
           ),
           GoRoute(
             path: '/itantsorika/gestion-ressource',
-            builder: (context, state) => const Scaffold(
-              body: Center(
-                child: Text('ManageRessourcesProtected Not Implemented'),
-              ),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Gestion des ressources',
+              subtitle: 'Le module de gestion des ressources est en préparation.',
             ),
           ),
           GoRoute(
@@ -496,8 +514,9 @@ class AppRouter {
           ),
           GoRoute(
             path: '/admin/acte-type-management/sous-type',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('ActeSousType Not Implemented')),
+            builder: (context, state) => const ComingSoonScreen(
+              title: 'Sous-type d’acte',
+              subtitle: 'La gestion des sous-types d’acte est en cours de développement.',
             ),
           ),
           GoRoute(

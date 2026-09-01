@@ -1,5 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// ── ÉTAPE 4 : Migré de flutter_riverpod vers ChangeNotifier (provider) ────────
+// flutter_riverpod a été retiré du projet car il n'était utilisé que dans ce
+// fichier. On utilise maintenant ChangeNotifier (déjà présent via provider).
 
 class SelectedCommuneState {
   final String id;
@@ -25,11 +29,17 @@ class SelectedCommuneState {
   }
 }
 
-class SelectedCommuneNotifier extends Notifier<SelectedCommuneState> {
-  @override
-  SelectedCommuneState build() {
+class SelectedCommuneNotifier extends ChangeNotifier {
+  SelectedCommuneState _state = SelectedCommuneState(
+    id: '',
+    statut: 'tous',
+    periode: 'toutes',
+  );
+
+  SelectedCommuneState get state => _state;
+
+  SelectedCommuneNotifier() {
     _loadFromPrefs();
-    return SelectedCommuneState(id: '', statut: 'tous', periode: 'toutes');
   }
 
   Future<void> _loadFromPrefs() async {
@@ -37,36 +47,35 @@ class SelectedCommuneNotifier extends Notifier<SelectedCommuneState> {
     final id = prefs.getString('selectedCommuneId') ?? '';
     final statut = prefs.getString('selectedStatut') ?? 'tous';
     final periode = prefs.getString('selectedPeriode') ?? 'toutes';
-    
-    state = SelectedCommuneState(id: id, statut: statut, periode: periode);
+
+    _state = SelectedCommuneState(id: id, statut: statut, periode: periode);
+    notifyListeners();
   }
 
   Future<void> setSelectedCommune(dynamic communeId) async {
     final prefs = await SharedPreferences.getInstance();
     final stringId = communeId.toString();
-    
+
     if (stringId.isEmpty) {
       await prefs.remove('selectedCommuneId');
     } else {
       await prefs.setString('selectedCommuneId', stringId);
     }
-    state = state.copyWith(id: stringId);
+    _state = _state.copyWith(id: stringId);
+    notifyListeners();
   }
 
   Future<void> setSelectedStatut(String statut) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('selectedStatut', statut);
-    state = state.copyWith(statut: statut);
+    _state = _state.copyWith(statut: statut);
+    notifyListeners();
   }
 
   Future<void> setSelectedPeriode(String periode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('selectedPeriode', periode);
-    state = state.copyWith(periode: periode);
+    _state = _state.copyWith(periode: periode);
+    notifyListeners();
   }
 }
-
-final selectedCommuneProvider =
-    NotifierProvider<SelectedCommuneNotifier, SelectedCommuneState>(
-  () => SelectedCommuneNotifier(),
-);
