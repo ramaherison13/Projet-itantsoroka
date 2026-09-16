@@ -26,11 +26,29 @@ class _PublicationEditWidgetState extends State<PublicationEditWidget> {
   Map<String, dynamic> _formData = {};
   String _newPartner = '';
 
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _budgetController;
+  late TextEditingController _partnerController;
+
   @override
   void initState() {
     super.initState();
     _isDark = widget.darkMode;
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _budgetController = TextEditingController(text: '0');
+    _partnerController = TextEditingController();
     _fetchPublication();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _budgetController.dispose();
+    _partnerController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchPublication() async {
@@ -80,7 +98,16 @@ class _PublicationEditWidgetState extends State<PublicationEditWidget> {
       setState(() {
         _loading = false;
       });
+      _updateControllersFromData();
     }
+  }
+
+  void _updateControllersFromData() {
+    final titleValue = widget.type == 'event' ? _formData['title'] : _formData['name'];
+    _titleController.text = titleValue?.toString() ?? '';
+    _descriptionController.text = _formData['description']?.toString() ?? '';
+    _budgetController.text = _formData['budget']?.toString() ?? '0';
+    _partnerController.text = _newPartner;
   }
 
   void _handleInputChange(String field, dynamic value) {
@@ -97,6 +124,7 @@ class _PublicationEditWidgetState extends State<PublicationEditWidget> {
         setState(() {
           _formData['partenaire'] = partners;
           _newPartner = '';
+          _partnerController.clear();
         });
       }
     }
@@ -262,17 +290,7 @@ class _PublicationEditWidgetState extends State<PublicationEditWidget> {
                       ),
                       const SizedBox(height: 8),
                       TextField(
-                        controller: TextEditingController(
-                          text: widget.type == 'event' ? _formData['title'] : _formData['name'],
-                        )..selection = TextSelection.fromPosition(
-                            TextPosition(
-                              offset: (widget.type == 'event'
-                                      ? _formData['title']
-                                      : _formData['name'] ?? '')
-                                  .toString()
-                                  .length,
-                            ),
-                          ),
+                        controller: _titleController,
                         onChanged: (val) => _handleInputChange(
                           widget.type == 'event' ? 'title' : 'name',
                           val,
@@ -310,10 +328,7 @@ class _PublicationEditWidgetState extends State<PublicationEditWidget> {
                       ),
                       const SizedBox(height: 8),
                       TextField(
-                        controller: TextEditingController(text: _formData['description'])
-                          ..selection = TextSelection.fromPosition(
-                            TextPosition(offset: (_formData['description'] ?? '').toString().length),
-                          ),
+                        controller: _descriptionController,
                         onChanged: (val) => _handleInputChange('description', val),
                         maxLines: 4,
                         style: TextStyle(color: _isDark ? Colors.white : Colors.black87),
@@ -444,7 +459,7 @@ class _PublicationEditWidgetState extends State<PublicationEditWidget> {
                         ),
                         const SizedBox(height: 8),
                         TextField(
-                          controller: TextEditingController(text: _formData['budget']?.toString() ?? '0'),
+                          controller: _budgetController,
                           keyboardType: TextInputType.number,
                           onChanged: (val) => _handleInputChange('budget', double.tryParse(val) ?? 0),
                           style: TextStyle(color: _isDark ? Colors.white : Colors.black87),
@@ -477,10 +492,7 @@ class _PublicationEditWidgetState extends State<PublicationEditWidget> {
                           children: [
                             Expanded(
                               child: TextField(
-                                controller: TextEditingController(text: _newPartner)
-                                  ..selection = TextSelection.fromPosition(
-                                    TextPosition(offset: _newPartner.length),
-                                  ),
+                                controller: _partnerController,
                                 onChanged: (val) => _newPartner = val,
                                 onSubmitted: (_) => _addPartner(),
                                 style: TextStyle(color: _isDark ? Colors.white : Colors.black87),

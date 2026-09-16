@@ -425,9 +425,14 @@ class _HeaderWidgetState extends State<HeaderWidget>
                 ),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 // ── Couverture Dégradé Réseau Social ─────────────────────────
                 Stack(
                   clipBehavior: Clip.none,
@@ -668,10 +673,12 @@ class _HeaderWidgetState extends State<HeaderWidget>
                     ],
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
-        );
+        ),
+      );
       },
     );
   }
@@ -963,38 +970,49 @@ class _HeaderWidgetState extends State<HeaderWidget>
     final dynamic user = _fullProfile;
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final String currentPath = GoRouterState.of(context).uri.path;
-    final bool isDesktop = MediaQuery.of(context).size.width >= 1200;
+
+    final double topPadding = MediaQuery.of(context).padding.top;
+    final double headerContentHeight = 64.0;
+    final double totalHeaderHeight = headerContentHeight + topPadding;
+
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isDesktop = screenWidth >= 1100;
+    final bool isMobile = screenWidth < 640;
+    final bool isSmallMobile = screenWidth < 380;
 
     // Navigation filtrée par rôle
     final auth = context.watch<AuthProvider>();
     final roleNavItems = RoleNavigationService.getAllowedNavItems(auth.roleSlugs);
 
     return Container(
-      height: 64.0,
+      height: totalHeaderHeight,
+      padding: EdgeInsets.only(top: topPadding),
       decoration: BoxDecoration(
         color: isDarkMode
-            ? Colors.grey.shade900.withValues(alpha: 0.97)
-            : Colors.white,
+            ? const Color(0xFF0F172A).withValues(alpha: 0.98)
+            : Colors.white.withValues(alpha: 0.98),
         border: Border(
           bottom: BorderSide(
             color: isDarkMode
-                ? Colors.grey.shade800
-                : Colors.grey.shade200,
+                ? const Color(0xFF334155)
+                : const Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.35 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: SafeArea(
+      child: SizedBox(
+        height: headerContentHeight,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12.0 : 24.0),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // ── Logo / Branding ────────────────────────────────────
               GestureDetector(
@@ -1005,33 +1023,34 @@ class _HeaderWidgetState extends State<HeaderWidget>
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: isDarkMode
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                          : null,
+                      color: isDarkMode ? Colors.white : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.white24 : const Color(0xFFE2E8F0),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Image.asset(
                       'assets/images/logo_dd_v3.png',
-                      height: 34,
+                      height: isSmallMobile ? 26 : 32,
                       fit: BoxFit.contain,
                       filterQuality: FilterQuality.high,
                       errorBuilder: (context, error, stackTrace) => Image.asset(
                         'assets/images/logo_dd.png',
-                        height: 34,
+                        height: isSmallMobile ? 26 : 32,
                         fit: BoxFit.contain,
                         filterQuality: FilterQuality.high,
                         errorBuilder: (ctx, err, _) => Container(
-                          width: 34,
-                          height: 34,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFF098E00), Color(0xFF056B00)],
@@ -1040,14 +1059,12 @@ class _HeaderWidgetState extends State<HeaderWidget>
                             ),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Center(
-                            child: Text(
-                              'T',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
+                          child: const Text(
+                            'DISTRICT',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -1059,11 +1076,13 @@ class _HeaderWidgetState extends State<HeaderWidget>
 
               // ── Nav Desktop ────────────────────────────────────────
               if (isDesktop) ...[
-                const SizedBox(width: 32),
+                const SizedBox(width: 24),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: roleNavItems.map((item) {
                         final bool isActive = currentPath == item.path ||
                             (item.path != '/' && currentPath.startsWith(item.path));
@@ -1077,6 +1096,7 @@ class _HeaderWidgetState extends State<HeaderWidget>
                     ),
                   ),
                 ),
+                const SizedBox(width: 20),
               ] else
                 const Spacer(),
 
@@ -1086,18 +1106,81 @@ class _HeaderWidgetState extends State<HeaderWidget>
                     ? _buildAuthenticatedActions(context, isActivated, user, isDarkMode)
                     : _buildUnauthenticatedActions(context, isDarkMode),
               ] else ...[
-                // Sur mobile : Langue + Thème + Burger
+                // Sur mobile : Langue + Thème + Quick Connexion / Avatar + Burger
                 const LanguageSettingWidget(isCompact: true),
-                const SizedBox(width: 4),
+                SizedBox(width: isSmallMobile ? 2 : 4),
                 _buildThemeMenuButton(context, isDarkMode),
-                const SizedBox(width: 4),
+                SizedBox(width: isSmallMobile ? 2 : 4),
+
+                if (isAuthenticated)
+                  GestureDetector(
+                    onTap: () => _showProfilePopup(context),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF098E00), Color(0xFF056B00)],
+                        ),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF098E00).withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          (user?['user']?['user_pseudo'] ?? 'U')[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else if (screenWidth >= 480)
+                  TextButton.icon(
+                    onPressed: () => context.go('/auth/login'),
+                    icon: const Icon(Icons.login_rounded, size: 15, color: Color(0xFF098E00)),
+                    label: Text(
+                      context.tr('se_connect'),
+                      style: const TextStyle(
+                        color: Color(0xFF098E00),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      backgroundColor: const Color(0xFF098E00).withValues(alpha: 0.1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: const Color(0xFF098E00).withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                SizedBox(width: isSmallMobile ? 2 : 4),
                 IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   icon: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
                       _menuOpen ? Icons.close_rounded : Icons.menu_rounded,
                       key: ValueKey(_menuOpen),
-                      color: isDarkMode ? Colors.white : const Color(0xFF0f0f23),
+                      size: 24,
+                      color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
                   onPressed: _toggleMenu,
@@ -1125,10 +1208,11 @@ class _HeaderWidgetState extends State<HeaderWidget>
 
     return PopupMenuButton<ThemeMode>(
       tooltip: 'Changer le thème (Clair, Sombre, Système)',
+      padding: EdgeInsets.zero,
       icon: Icon(
         currentIcon,
         size: 20,
-        color: isDarkMode ? Colors.amber : const Color(0xFF555577),
+        color: isDarkMode ? Colors.amber : const Color(0xFF475569),
       ),
       offset: const Offset(0, 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1197,7 +1281,7 @@ class _HeaderWidgetState extends State<HeaderWidget>
         const LanguageSettingWidget(),
         const SizedBox(width: 6),
         _buildThemeMenuButton(context, isDarkMode),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         GestureDetector(
           onTap: () => _showProfilePopup(context),
           child: MouseRegion(
@@ -1235,7 +1319,13 @@ class _HeaderWidgetState extends State<HeaderWidget>
         IconButton(
           icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
           tooltip: 'Se déconnecter',
-          onPressed: () => context.go('/'),
+          onPressed: () async {
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            await auth.logout();
+            if (context.mounted) {
+              context.go('/');
+            }
+          },
         ),
       ],
     );
@@ -1248,12 +1338,12 @@ class _HeaderWidgetState extends State<HeaderWidget>
         const LanguageSettingWidget(),
         const SizedBox(width: 6),
         _buildThemeMenuButton(context, isDarkMode),
-        const SizedBox(width: 2),
+        const SizedBox(width: 6),
         TextButton(
           onPressed: () => context.go('/auth/login'),
           style: TextButton.styleFrom(
-            foregroundColor: isDarkMode ? Colors.white70 : const Color(0xFF1a1a2e),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            foregroundColor: isDarkMode ? Colors.white70 : const Color(0xFF1E293B),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
           child: Text(
             context.tr('se_connect'),
@@ -1291,19 +1381,27 @@ class _HeaderWidgetState extends State<HeaderWidget>
               backgroundColor: const Color(0xFF098E00),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 13),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             icon: const Icon(Icons.apps_rounded),
             label: Text(context.tr('sidebar_modules'), style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
-          onPressed: () => _closeMenuAndNavigate('/'),
+          onPressed: () async {
+            _removeOverlay();
+            if (mounted) setState(() => _menuOpen = false);
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            await auth.logout();
+            if (context.mounted) {
+              context.go('/');
+            }
+          },
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.red,
             side: const BorderSide(color: Colors.red),
             padding: const EdgeInsets.symmetric(vertical: 13),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           icon: const Icon(Icons.logout_rounded),
           label: Text(context.tr('deconnexion'), style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -1324,34 +1422,44 @@ class _HeaderWidgetState extends State<HeaderWidget>
               "Langue / Teny :",
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: isDarkMode ? Colors.white70 : const Color(0xFF444466),
+                fontSize: 13.5,
+                color: isDarkMode ? Colors.white70 : const Color(0xFF475569),
               ),
             ),
             const LanguageSettingWidget(),
           ],
         ),
-        const SizedBox(height: 14),
-        OutlinedButton(
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
           onPressed: () => _closeMenuAndNavigate('/auth/login'),
+          icon: const Icon(Icons.login_rounded, size: 18),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 13),
-            side: const BorderSide(color: Color(0xFF098E00)),
+            side: const BorderSide(color: Color(0xFF098E00), width: 1.5),
             foregroundColor: const Color(0xFF098E00),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: Text(context.tr('se_connect'), style: const TextStyle(fontWeight: FontWeight.w700)),
+          label: Text(
+            context.tr('se_connect'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
         ),
         const SizedBox(height: 10),
-        ElevatedButton(
+        ElevatedButton.icon(
           onPressed: () => _closeMenuAndNavigate('/auth/check-id-card'),
+          icon: const Icon(Icons.person_add_rounded, size: 18),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF098E00),
             foregroundColor: Colors.white,
+            elevation: 3,
+            shadowColor: const Color(0xFF098E00).withValues(alpha: 0.35),
             padding: const EdgeInsets.symmetric(vertical: 13),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: Text(context.tr('nav_bar.s_inscrire'), style: const TextStyle(fontWeight: FontWeight.w700)),
+          label: Text(
+            context.tr('nav_bar.s_inscrire'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
         ),
       ],
     );
@@ -1386,7 +1494,7 @@ class _NavLinkState extends State<_NavLink> {
         ? activeColor
         : (_hovered
             ? activeColor
-            : (widget.isDarkMode ? Colors.white70 : const Color(0xFF444466)));
+            : (widget.isDarkMode ? Colors.white70 : const Color(0xFF334155)));
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1396,13 +1504,20 @@ class _NavLinkState extends State<_NavLink> {
         onTap: () => context.go(widget.path),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: widget.isActive ? activeColor : Colors.transparent,
-                width: 2.5,
-              ),
+            color: widget.isActive
+                ? activeColor.withValues(alpha: widget.isDarkMode ? 0.16 : 0.10)
+                : (_hovered
+                    ? (widget.isDarkMode ? Colors.white10 : const Color(0xFFF1F5F9))
+                    : Colors.transparent),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: widget.isActive
+                  ? activeColor.withValues(alpha: 0.3)
+                  : Colors.transparent,
+              width: 1,
             ),
           ),
           child: Text(

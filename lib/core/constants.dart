@@ -1,7 +1,7 @@
 // lib/core/constants.dart
-class ApiConstants {
-  static String baseUrl = "https://gateway.tsirylab.com";
-  static Map<String, String> headers = {
+class AppConstants {
+  static const String baseUrl = "https://gateway.tsirylab.com";
+  static const Map<String, String> headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };

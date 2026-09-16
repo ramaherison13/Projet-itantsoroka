@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/territory_service.dart';
 
 // --- Modèle de données pour l'Événement ---
 class EventData {
@@ -43,6 +46,52 @@ class _PublishEventScreenState extends State<PublishEventScreen> {
   bool isSidebarOpen = false;
   String successMessage = "";
   String errorMessage = "";
+
+  List<dynamic> _communesList = [];
+  List<dynamic> _districtsList = [];
+  bool _loadingTerritories = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final nextWeek = DateTime.now().add(const Duration(days: 7)).toIso8601String().split('T')[0];
+    formData.startDate = today;
+    formData.endDate = nextWeek;
+
+    _loadTerritories();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final userCommune = authProvider.user?.municipalityId;
+      final userDistrict = authProvider.user?.districtId;
+
+      setState(() {
+        if (userCommune != null && userCommune.isNotEmpty && formData.communeId.isEmpty) {
+          formData.communeId = userCommune;
+        }
+        if (userDistrict != null && userDistrict.isNotEmpty && formData.districtId.isEmpty) {
+          formData.districtId = userDistrict;
+        }
+      });
+    });
+  }
+
+  Future<void> _loadTerritories() async {
+    try {
+      final communes = await TerritoryService.getCommunesBasic();
+      final districts = await TerritoryService.getDistrictsBasic();
+      if (mounted) {
+        setState(() {
+          _communesList = communes ?? [];
+          _districtsList = districts ?? [];
+          _loadingTerritories = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingTerritories = false);
+    }
+  }
 
   final EventData formData = EventData(
     title: "",
@@ -420,35 +469,68 @@ class _PublishEventScreenState extends State<PublishEventScreen> {
                                     if (currentStep == 1) ...[
                                       const Text("Étape 1 : Informations générales", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 16),
-                                      TextField(
+                                      TextFormField(
+                                        initialValue: formData.title,
                                         onChanged: (val) => _handleInputChange('title', val),
-                                        decoration: const InputDecoration(labelText: "Titre de l'événement", border: OutlineInputBorder()),
+                                        decoration: InputDecoration(
+                                          labelText: "Titre de l'événement *",
+                                          prefixIcon: const Icon(Icons.event_note_rounded, color: Color(0xFF10B981)),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
                                       ),
                                       const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('eventType', val),
-                                        decoration: const InputDecoration(labelText: "Type d'événement", border: OutlineInputBorder()),
+                                      DropdownButtonFormField<String>(
+                                        initialValue: formData.eventType.isNotEmpty ? formData.eventType : "Conférence",
+                                        items: const [
+                                          DropdownMenuItem(value: "Conférence", child: Text("Conférence")),
+                                          DropdownMenuItem(value: "Atelier", child: Text("Atelier")),
+                                          DropdownMenuItem(value: "Séminaire", child: Text("Séminaire")),
+                                          DropdownMenuItem(value: "Cérémonie", child: Text("Cérémonie")),
+                                        ],
+                                        onChanged: (val) {
+                                          if (val != null) _handleInputChange('eventType', val);
+                                        },
+                                        decoration: InputDecoration(
+                                          labelText: "Type d'événement *",
+                                          prefixIcon: const Icon(Icons.category_rounded, color: Color(0xFF10B981)),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
                                       ),
                                       const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('startDate', val),
-                                        decoration: const InputDecoration(labelText: "Date de début (YYYY-MM-DD)", border: OutlineInputBorder()),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildDatePickerField(
+                                              label: "Date de début *",
+                                              value: formData.startDate,
+                                              onChanged: (val) {
+                                                _handleInputChange('startDate', val);
+                                                try {
+                                                  final start = DateTime.parse(val);
+                                                  final end = DateTime.tryParse(formData.endDate);
+                                                  if (end == null || end.isBefore(start)) {
+                                                    final newEnd = start.add(const Duration(days: 7)).toIso8601String().split('T')[0];
+                                                    _handleInputChange('endDate', newEnd);
+                                                  }
+                                                } catch (_) {}
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: _buildDatePickerField(
+                                              label: "Date de fin *",
+                                              value: formData.endDate,
+                                              firstDate: DateTime.tryParse(formData.startDate),
+                                              onChanged: (val) => _handleInputChange('endDate', val),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('endDate', val),
-                                        decoration: const InputDecoration(labelText: "Date de fin (YYYY-MM-DD)", border: OutlineInputBorder()),
-                                      ),
+                                      _buildCommuneDropdown(),
                                       const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('communeId', val),
-                                        decoration: const InputDecoration(labelText: "ID Commune", border: OutlineInputBorder()),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('districtId', val),
-                                        decoration: const InputDecoration(labelText: "ID District", border: OutlineInputBorder()),
-                                      ),
+                                      _buildDistrictDropdown(),
                                     ] else if (currentStep == 2) ...[
                                       const Text("Étape 2 : Description et détails", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 16),
@@ -551,6 +633,116 @@ class _PublishEventScreenState extends State<PublishEventScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDatePickerField({
+    required String label,
+    required String value,
+    required ValueChanged<String> onChanged,
+    DateTime? firstDate,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: () async {
+        DateTime initial = DateTime.now();
+        if (value.isNotEmpty) {
+          initial = DateTime.tryParse(value) ?? DateTime.now();
+        }
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: initial,
+          firstDate: firstDate ?? DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (picked != null) {
+          onChanged(picked.toIso8601String().split('T')[0]);
+        }
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.calendar_month_rounded, color: Color(0xFF10B981)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        ),
+        child: Text(
+          value.isNotEmpty ? value : "Sélectionner une date",
+          style: TextStyle(
+            fontSize: 14,
+            color: value.isNotEmpty
+                ? (isDarkMode ? Colors.white : const Color(0xFF0F172A))
+                : Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommuneDropdown() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    if (_loadingTerritories) {
+      return const LinearProgressIndicator(color: Color(0xFF10B981));
+    }
+    final selectedVal = _communesList.any((c) => (c['formatted_id']?.toString() ?? c['id']?.toString()) == formData.communeId)
+        ? formData.communeId
+        : (_communesList.isNotEmpty ? (_communesList.first['formatted_id']?.toString() ?? _communesList.first['id']?.toString()) : null);
+
+    return DropdownButtonFormField<String>(
+      initialValue: selectedVal,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: "Commune *",
+        prefixIcon: const Icon(Icons.location_city_rounded, color: Color(0xFF10B981)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      ),
+      items: _communesList.map<DropdownMenuItem<String>>((c) {
+        final id = c['formatted_id']?.toString() ?? c['id']?.toString() ?? '';
+        final name = c['commune_name'] ?? c['name'] ?? c['nom'] ?? id;
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Text(name, overflow: TextOverflow.ellipsis),
+        );
+      }).toList(),
+      onChanged: (val) {
+        if (val != null) _handleInputChange('communeId', val);
+      },
+    );
+  }
+
+  Widget _buildDistrictDropdown() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    if (_loadingTerritories) {
+      return const SizedBox.shrink();
+    }
+    final selectedVal = _districtsList.any((d) => (d['formatted_id']?.toString() ?? d['id']?.toString()) == formData.districtId)
+        ? formData.districtId
+        : (_districtsList.isNotEmpty ? (_districtsList.first['formatted_id']?.toString() ?? _districtsList.first['id']?.toString()) : null);
+
+    return DropdownButtonFormField<String>(
+      initialValue: selectedVal,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: "District *",
+        prefixIcon: const Icon(Icons.map_rounded, color: Color(0xFF10B981)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      ),
+      items: _districtsList.map<DropdownMenuItem<String>>((d) {
+        final id = d['formatted_id']?.toString() ?? d['id']?.toString() ?? '';
+        final name = d['district_name'] ?? d['name'] ?? d['nom'] ?? id;
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Text(name, overflow: TextOverflow.ellipsis),
+        );
+      }).toList(),
+      onChanged: (val) {
+        if (val != null) _handleInputChange('districtId', val);
+      },
     );
   }
 }

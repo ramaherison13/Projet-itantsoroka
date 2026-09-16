@@ -54,6 +54,7 @@ class _MonographieMapWidgetState extends State<MonographieMapWidget> {
 
     try {
       final d = await widget.getTerritoryByFormattedId(widget.id);
+      if (!mounted) return;
       bool isCommune = widget.types?.contains("commune") == true;
 
       dynamic territoryData;
@@ -65,6 +66,7 @@ class _MonographieMapWidgetState extends State<MonographieMapWidget> {
         territoryData = d;
       }
 
+      if (!mounted) return;
       setState(() {
         _territory = territoryData;
         _geometry = null;
@@ -85,7 +87,7 @@ class _MonographieMapWidgetState extends State<MonographieMapWidget> {
             } else if (rawForm is Map) {
               mapObj = Map<String, dynamic>.from(rawForm);
             }
-            if (mapObj != null) {
+            if (mapObj != null && mounted) {
               setState(() {
                 _geometry = GeoJSONGeometry.fromMap(mapObj!);
               });
@@ -98,6 +100,7 @@ class _MonographieMapWidgetState extends State<MonographieMapWidget> {
 
       // Recentrer la carte après chargement des polygones
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         final polys = _buildPolygons();
         if (polys.isNotEmpty) {
           final center = _getCenter(polys);

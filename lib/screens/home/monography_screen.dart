@@ -118,6 +118,20 @@ class _MonographieScreenState extends State<MonographieScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    try {
+      final q = GoRouterState.of(context).uri.queryParameters['q'];
+      if (q != null && q.trim().isNotEmpty && _searchTerm != q.trim()) {
+        setState(() {
+          _searchTerm = q.trim();
+          _searchCtrl.text = q.trim();
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
     _animCtrl.dispose();
     _searchCtrl.dispose();
@@ -1213,6 +1227,10 @@ class _MonographieScreenState extends State<MonographieScreen>
 
   Widget _buildCommunesAffilieesSection() {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final double w = MediaQuery.of(context).size.width;
+    final bool isMobile = w < 600;
+    final bool isDesktop = w >= 1000;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1228,8 +1246,8 @@ class _MonographieScreenState extends State<MonographieScreen>
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: isMobile ? 1 : (isDesktop ? 3 : 2),
               mainAxisExtent: 36,
               crossAxisSpacing: 16,
               mainAxisSpacing: 8,
@@ -1299,6 +1317,30 @@ class _MonographieScreenState extends State<MonographieScreen>
     );
   }
 
+  String _buildFilteredUrl(String basePath) {
+    if (widget.id == null || widget.id!.isEmpty) return basePath;
+
+    final isCommune = widget.type?.contains("commune") == true;
+    final nameParam = Uri.encodeComponent(widget.territoire ?? '');
+
+    if (isCommune) {
+      String url = '$basePath?communeId=${widget.id}&communeName=$nameParam';
+      if (parentDistrict != null) {
+        final pId = parentDistrict!['formatted_id']?.toString() ?? parentDistrict!['id']?.toString();
+        if (pId != null && pId.isNotEmpty) {
+          url += '&districtId=$pId';
+        }
+        final pName = parentDistrict!['name']?.toString() ?? parentDistrict!['nom']?.toString();
+        if (pName != null && pName.isNotEmpty) {
+          url += '&districtName=${Uri.encodeComponent(pName)}';
+        }
+      }
+      return url;
+    } else {
+      return '$basePath?districtId=${widget.id}&districtName=$nameParam';
+    }
+  }
+
   Widget _buildStdExpertisesSection() {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
@@ -1309,24 +1351,38 @@ class _MonographieScreenState extends State<MonographieScreen>
         if (loadingStdExpertises)
           const CircularProgressIndicator(color: _kGreen)
         else if (stdExpertises.isEmpty)
-          Text("Aucune expertise STD disponible pour ce territoire.", style: TextStyle(color: _textMuted(isDark), fontSize: 13.5, fontStyle: FontStyle.italic))
+          Center(
+            child: Column(
+              children: [
+                Text("Aucune expertise STD disponible pour ce territoire.", style: TextStyle(color: _textMuted(isDark), fontSize: 13.5, fontStyle: FontStyle.italic)),
+                const SizedBox(height: 16),
+                _greenActionBtn("Voir plus d'offres", () => context.go(_buildFilteredUrl('/offres-appui'))),
+              ],
+            ),
+          )
         else
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: stdExpertises.map((std) {
-              final name = _getLocalizedText(std['nom'] ?? std['name'] ?? std['title']);
-              final finalName = name.isEmpty ? 'STD' : name;
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: _cardBg(isDark),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _border(isDark)),
-                ),
-                child: Text(finalName, style: const TextStyle(color: _kGreen, fontWeight: FontWeight.bold, fontSize: 14)),
-              );
-            }).toList(),
+          Column(
+            children: [
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: stdExpertises.map((std) {
+                  final name = _getLocalizedText(std['nom'] ?? std['name'] ?? std['title']);
+                  final finalName = name.isEmpty ? 'STD' : name;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _cardBg(isDark),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _border(isDark)),
+                    ),
+                    child: Text(finalName, style: const TextStyle(color: _kGreen, fontWeight: FontWeight.bold, fontSize: 14)),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Center(child: _greenActionBtn("Voir plus d'offres", () => context.go(_buildFilteredUrl('/offres-appui')))),
+            ],
           ),
       ],
     );
@@ -1347,7 +1403,7 @@ class _MonographieScreenState extends State<MonographieScreen>
               children: [
                 Text("Aucune actualité disponible pour ce territoire.", style: TextStyle(color: _textMuted(isDark), fontSize: 13.5, fontStyle: FontStyle.italic)),
                 const SizedBox(height: 16),
-                _greenActionBtn("Voir plus d'articles", () => context.push('/publication')),
+                _greenActionBtn("Voir plus d'articles", () => context.go(_buildFilteredUrl('/actualites'))),
               ],
             ),
           )
@@ -1362,7 +1418,7 @@ class _MonographieScreenState extends State<MonographieScreen>
                 itemBuilder: (_, i) => _actuCard(actualites[i], isDark),
               ),
               const SizedBox(height: 16),
-              Center(child: _greenActionBtn("Voir plus d'articles", () => context.push('/publication'))),
+              Center(child: _greenActionBtn("Voir plus d'articles", () => context.go(_buildFilteredUrl('/actualites')))),
             ],
           ),
       ],
@@ -1384,7 +1440,7 @@ class _MonographieScreenState extends State<MonographieScreen>
               children: [
                 Text("Aucun projet disponible pour ce territoire.", style: TextStyle(color: _textMuted(isDark), fontSize: 13.5, fontStyle: FontStyle.italic)),
                 const SizedBox(height: 16),
-                _greenActionBtn("Voir plus de projets", () => context.push('/office-projet')),
+                _greenActionBtn("Voir plus de projets", () => context.go(_buildFilteredUrl('/officeprojet'))),
               ],
             ),
           )
@@ -1399,7 +1455,7 @@ class _MonographieScreenState extends State<MonographieScreen>
                 itemBuilder: (_, i) => _projectCard(projectResources[i], isDark),
               ),
               const SizedBox(height: 16),
-              Center(child: _greenActionBtn("Voir plus de projets", () => context.push('/office-projet'))),
+              Center(child: _greenActionBtn("Voir plus de projets", () => context.go(_buildFilteredUrl('/officeprojet')))),
             ],
           ),
       ],
@@ -1419,9 +1475,9 @@ class _MonographieScreenState extends State<MonographieScreen>
           Center(
             child: Column(
               children: [
-                Text("Aucun Document disponible pour ce territoire.", style: TextStyle(color: _textMuted(isDark), fontSize: 13.5, fontStyle: FontStyle.italic)),
+                Text("Aucun document disponible pour ce territoire.", style: TextStyle(color: _textMuted(isDark), fontSize: 13.5, fontStyle: FontStyle.italic)),
                 const SizedBox(height: 16),
-                _greenActionBtn("Voir plus d'articles", () => context.push('/centre-ressource')),
+                _greenActionBtn("Voir plus de documents", () => context.go(_buildFilteredUrl('/document'))),
               ],
             ),
           )
@@ -1436,7 +1492,7 @@ class _MonographieScreenState extends State<MonographieScreen>
                 itemBuilder: (_, i) => _documentCard(documentResources[i], isDark),
               ),
               const SizedBox(height: 16),
-              Center(child: _greenActionBtn("Voir plus d'articles", () => context.push('/centre-ressource'))),
+              Center(child: _greenActionBtn("Voir plus de documents", () => context.go(_buildFilteredUrl('/document')))),
             ],
           ),
       ],
@@ -1472,7 +1528,13 @@ class _MonographieScreenState extends State<MonographieScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Text(label, style: TextStyle(color: _textMain(isDark), fontWeight: FontWeight.bold, fontSize: 14)),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(color: _textMain(isDark), fontWeight: FontWeight.bold, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),

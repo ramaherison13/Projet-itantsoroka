@@ -22,28 +22,22 @@ import 'package:http/http.dart' as http;
 /// - GET    https://gateway.tsirylab.com/serviceauth/permissions/by-application/{app_id} (Lister les permissions d'une application)
 class RoleService {
   static const String baseUrl = "https://gateway.tsirylab.com/serviceauth";
-  static const int appId = 1; 
+  static const int appId = 9; // iTantsoroka app_id correct
   static const int defaultRoleId = 0;
 
   static Future<dynamic> getAllRoles() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/application/$appId'));
-
-      if (response.statusCode == 200 && response.body.trim().isNotEmpty) {
-        final data = jsonDecode(response.body);
-        if (data != null && data['roles'] is List) {
-          List roles = data['roles'];
-          data['roles'] = roles.where((role) => role['role_id'] != defaultRoleId).toList();
+      // Récupérer TOUS les rôles (69 rôles) via /roles?limit=200
+      final resRoles = await http.get(Uri.parse('$baseUrl/roles?limit=200'));
+      if (resRoles.statusCode >= 200 && resRoles.statusCode < 300 && resRoles.body.trim().isNotEmpty) {
+        final data = jsonDecode(resRoles.body);
+        if (data != null && data['data'] is List) {
+          List roles = data['data'];
+          data['data'] = roles.where((role) => role['role_id'] != defaultRoleId).toList();
           return data;
         }
+        return data;
       }
-
-      // Fallback: GET /serviceauth/roles
-      final resRoles = await http.get(Uri.parse('$baseUrl/roles'));
-      if (resRoles.statusCode == 200 && resRoles.body.trim().isNotEmpty) {
-        return jsonDecode(resRoles.body);
-      }
-
       return null;
     } catch (error) {
       debugPrint("Erreur lors de la récupération des roles : $error");
@@ -53,14 +47,15 @@ class RoleService {
 
   static Future<dynamic> getAllRolesForLogin() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/application/$appId'));
+      // GET /roles/application/{appId} - endpoint correct
+      final response = await http.get(Uri.parse('$baseUrl/roles/application/$appId'));
 
       if (response.statusCode == 200 && response.body.trim().isNotEmpty) {
         return jsonDecode(response.body);
       }
 
-      // Fallback: GET /serviceauth/roles
-      final resRoles = await http.get(Uri.parse('$baseUrl/roles'));
+      // Fallback: GET /roles?limit=200
+      final resRoles = await http.get(Uri.parse('$baseUrl/roles?limit=200'));
       if (resRoles.statusCode == 200 && resRoles.body.trim().isNotEmpty) {
         return jsonDecode(resRoles.body);
       }
@@ -74,18 +69,16 @@ class RoleService {
 
   static Future<dynamic> getAllRolesWithPermission() async {
     try {
-      // 1. GET /serviceauth/application/1
-      final resApp = await http.get(Uri.parse('$baseUrl/application/$appId'));
-      if (resApp.statusCode >= 200 && resApp.statusCode < 300 && resApp.body.trim().isNotEmpty) {
-        return jsonDecode(resApp.body);
+      // Récupérer TOUS les rôles (toutes applications) avec pagination désactivée
+      final res = await http.get(Uri.parse('$baseUrl/roles?limit=200'));
+      if (res.statusCode >= 200 && res.statusCode < 300 && res.body.trim().isNotEmpty) {
+        final data = jsonDecode(res.body);
+        // L'API retourne {data: [...], total, page, limit}
+        if (data is Map && data['data'] is List) {
+          return data['data'];
+        }
+        if (data is List) return data;
       }
-
-      // 2. GET /serviceauth/roles
-      final resRoles = await http.get(Uri.parse('$baseUrl/roles'));
-      if (resRoles.statusCode >= 200 && resRoles.statusCode < 300 && resRoles.body.trim().isNotEmpty) {
-        return jsonDecode(resRoles.body);
-      }
-
       return null;
     } catch (error) {
       debugPrint("Erreur lors de la récupération des roles : $error");

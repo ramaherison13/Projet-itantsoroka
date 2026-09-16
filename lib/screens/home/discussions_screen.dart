@@ -687,71 +687,78 @@ class _ChatHeader extends StatelessWidget {
               icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF475569)),
               onPressed: onBackMobile,
             ),
-          GestureDetector(
-            onTap: onShowPopup,
-            child: Row(
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.1),
-                      backgroundImage: selectedUser.citoyen?.citizenPhoto != null
-                          ? NetworkImage(selectedUser.citoyen!.citizenPhoto!)
-                          : null,
-                      child: selectedUser.citoyen?.citizenPhoto == null
-                          ? Text(
-                              selectedUser.displayName[0].toUpperCase(),
-                              style: const TextStyle(
-                                color: Color(0xFF0F766E),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )
-                          : null,
-                    ),
-                    if (selectedUser.isOnline)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+          Expanded(
+            child: GestureDetector(
+              onTap: onShowPopup,
+              child: Row(
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.1),
+                        backgroundImage: selectedUser.citoyen?.citizenPhoto != null
+                            ? NetworkImage(selectedUser.citoyen!.citizenPhoto!)
+                            : null,
+                        child: selectedUser.citoyen?.citizenPhoto == null
+                            ? Text(
+                                selectedUser.displayName.isNotEmpty
+                                    ? selectedUser.displayName[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Color(0xFF0F766E),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                      if (selectedUser.isOnline)
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      selectedUser.displayName,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selectedUser.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        Text(
+                          selectedUser.isOnline ? 'En ligne' : 'Hors ligne',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: selectedUser.isOnline
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      selectedUser.isOnline ? 'En ligne' : 'Hors ligne',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: selectedUser.isOnline
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFF94A3B8),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
-          const Spacer(),
           IconButton(
             icon: const Icon(LucideIcons.users, color: Color(0xFF0F766E)),
             onPressed: onShowGroupModal,
@@ -1168,6 +1175,12 @@ class _GroupModalDialog extends StatefulWidget {
 class _GroupModalDialogState extends State<_GroupModalDialog> {
   final TextEditingController _groupNameController = TextEditingController();
   final Set<String> _selectedUserIds = {};
+
+  @override
+  void dispose() {
+    _groupNameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

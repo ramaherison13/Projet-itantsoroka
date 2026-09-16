@@ -292,37 +292,40 @@ class SideBarWidgetState extends State<SideBarWidget> {
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 4),
-                      child: ListTile(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        tileColor:
-                            isActive ? activeBgColor : Colors.transparent,
-                        leading: Icon(
-                          icon,
-                          color: isActive
-                              ? primaryColor
-                              : (isDarkMode
-                                  ? Colors.grey.shade400
-                                  : Colors.grey.shade600),
-                          size: 20,
-                        ),
-                        title: Text(
-                          item['nameKey'] ?? item['name'] ?? '',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: isActive
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                            color: isActive ? primaryColor : textColor,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          tileColor:
+                              isActive ? activeBgColor : Colors.transparent,
+                          leading: Icon(
+                            icon,
+                            color: isActive
+                                ? primaryColor
+                                : (isDarkMode
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade600),
+                            size: 20,
                           ),
+                          title: Text(
+                            item['nameKey'] ?? item['name'] ?? '',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isActive
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: isActive ? primaryColor : textColor,
+                            ),
+                          ),
+                          selected: isActive,
+                          onTap: () {
+                            if (path.isNotEmpty) {
+                              context.go(path);
+                              widget.setMenuOpen(false);
+                            }
+                          },
                         ),
-                        selected: isActive,
-                        onTap: () {
-                          if (path.isNotEmpty) {
-                            context.go(path);
-                            widget.setMenuOpen(false);
-                          }
-                        },
                       ),
                     );
                   }),
@@ -350,37 +353,40 @@ class SideBarWidgetState extends State<SideBarWidget> {
                   final isActive = widget.currentPathname == path;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 4),
-                    child: ListTile(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      tileColor:
-                          isActive ? activeBgColor : Colors.transparent,
-                      leading: Icon(
-                        item['icon'] as IconData,
-                        color: isActive
-                            ? primaryColor
-                            : (isDarkMode
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade600),
-                        size: 20,
-                      ),
-                      title: Text(
-                        item['nameKey'] ?? '',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isActive
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                          color: isActive ? primaryColor : textColor,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        tileColor:
+                            isActive ? activeBgColor : Colors.transparent,
+                        leading: Icon(
+                          item['icon'] as IconData,
+                          color: isActive
+                              ? primaryColor
+                              : (isDarkMode
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600),
+                          size: 20,
                         ),
+                        title: Text(
+                          item['nameKey'] ?? '',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isActive
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            color: isActive ? primaryColor : textColor,
+                          ),
+                        ),
+                        selected: isActive,
+                        onTap: () {
+                          if (path.isNotEmpty) {
+                            context.go(path);
+                            widget.setMenuOpen(false);
+                          }
+                        },
                       ),
-                      selected: isActive,
-                      onTap: () {
-                        if (path.isNotEmpty) {
-                          context.go(path);
-                          widget.setMenuOpen(false);
-                        }
-                      },
                     ),
                   );
                 }),
@@ -392,22 +398,25 @@ class SideBarWidgetState extends State<SideBarWidget> {
 
           Padding(
             padding: const EdgeInsets.all(10),
-            child: ListTile(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              leading: const Icon(Icons.logout_rounded,
-                  color: Colors.redAccent, size: 20),
-              title: Text(
-                context.tr('deconnexion'),
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.redAccent),
+            child: Material(
+              color: Colors.transparent,
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                leading: const Icon(Icons.logout_rounded,
+                    color: Colors.redAccent, size: 20),
+                title: Text(
+                  context.tr('deconnexion'),
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.redAccent),
+                ),
+                onTap: () {
+                  widget.onLogout();
+                  widget.setMenuOpen(false);
+                },
               ),
-              onTap: () {
-                widget.onLogout();
-                widget.setMenuOpen(false);
-              },
             ),
           ),
         ],

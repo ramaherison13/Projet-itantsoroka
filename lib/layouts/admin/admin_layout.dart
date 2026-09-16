@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:itantsoroka/core/admin_theme.dart';
+import 'package:itantsoroka/providers/auth_provider.dart';
 import 'admin_header_widget.dart';
 import '../../widgets/sidebar/side_bar_widget.dart';
 import '../../widgets/discussion/floating_discussion_button_widget.dart';
@@ -21,6 +23,7 @@ class AdminLayout extends StatefulWidget {
 class _AdminLayoutState extends State<AdminLayout>
     with SingleTickerProviderStateMixin {
   bool _menuOpen = false;
+  DateTime? _lastBackPressTime;
   late AnimationController _drawerController;
   late Animation<Offset> _drawerSlide;
   late Animation<double> _scrimOpacity;
@@ -64,6 +67,53 @@ class _AdminLayoutState extends State<AdminLayout>
     }
   }
 
+  void _handleDoubleBackPress(BuildContext context) async {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+
+    final now = DateTime.now();
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Appuyez à nouveau pour quitter l'application",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          action: SnackBarAction(
+            label: "Quitter",
+            textColor: const Color(0xFF00E676),
+            onPressed: () {
+              SystemNavigator.pop();
+            },
+          ),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          backgroundColor: const Color(0xFF0F172A),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      await SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDark = context.isDark;
@@ -75,12 +125,11 @@ class _AdminLayoutState extends State<AdminLayout>
       currentPath = GoRouterState.of(context).uri.toString();
     } catch (_) {}
 
+    final auth = context.watch<AuthProvider>();
     final Map<String, dynamic> adminUser = {
-      'user_pseudo': 'Admin',
-      'user_email': 'admin@example.com',
-      'roles': [
-        {'role_slug': 'Super-Admin', 'role_name': 'Super-Admin'}
-      ],
+      'user_pseudo': auth.userName.isNotEmpty ? auth.userName : 'Administrateur',
+      'user_email': auth.userEmail.isNotEmpty ? auth.userEmail : '',
+      'roles': auth.roleSlugs.map((r) => {'role_slug': r, 'role_name': r}).toList(),
     };
 
     // Largeur du drawer adaptatif
@@ -90,14 +139,20 @@ class _AdminLayoutState extends State<AdminLayout>
             ? 300.0
             : 280.0;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark
-          ? SystemUiOverlayStyle.light
-          : SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: isDark ? AdminTheme.bgDark : AdminTheme.bgLight,
-        body: SafeArea(
-          top: false,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleDoubleBackPress(context);
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
+        child: Scaffold(
+          backgroundColor: isDark ? AdminTheme.bgDark : AdminTheme.bgLight,
+          body: SafeArea(
+            top: false,
           child: Stack(
             children: [
               // ─── Disposition principale ────────────────────────────────
@@ -207,6 +262,7 @@ class _AdminLayoutState extends State<AdminLayout>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

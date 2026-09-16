@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/role_navigation_service.dart';
 import 'header_widget.dart';
 
-class MainLayout extends StatelessWidget {
+class MainLayout extends StatefulWidget {
   final Widget child;
 
   const MainLayout({
     super.key,
     required this.child,
   });
+
+  @override
+  State<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends State<MainLayout> {
+  DateTime? _lastBackPressTime;
 
   int _getSelectedIndex(String path, List<RoleNavItem> items) {
     for (int i = 0; i < items.length; i++) {
@@ -30,6 +38,53 @@ class MainLayout extends StatelessWidget {
     }
   }
 
+  void _handleDoubleBackPress(BuildContext context) async {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+
+    final now = DateTime.now();
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Appuyez à nouveau pour quitter l'application",
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          action: SnackBarAction(
+            label: "Quitter",
+            textColor: const Color(0xFF00E676),
+            onPressed: () {
+              SystemNavigator.pop();
+            },
+          ),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          backgroundColor: const Color(0xFF0F172A),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      await SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -45,50 +100,57 @@ class MainLayout extends StatelessWidget {
     final String currentPath = GoRouterState.of(context).uri.path;
     final int selectedIndex = _getSelectedIndex(currentPath, navItems);
 
-    return Scaffold(
-      body: SafeArea(
-        top: false,
-        bottom: false,
-        child: Row(
-          children: [
-            // ── BARRE LATÉRALE VERTICALE CAPSULE (STYLE CAPTURE 2 SUR ÉCRAN DESKTOP) ────
-            if (isWideDesktop)
-              _ModernSocialVerticalSideBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleDoubleBackPress(context);
+      },
+      child: Scaffold(
+        body: SafeArea(
+          top: false,
+          bottom: false,
+          child: Row(
+            children: [
+              // ── BARRE LATÉRALE VERTICALE CAPSULE (STYLE CAPTURE 2 SUR ÉCRAN DESKTOP) ────
+              if (isWideDesktop)
+                _ModernSocialVerticalSideBar(
+                  selectedIndex: selectedIndex,
+                  onTap: (idx) => _onItemTapped(context, idx, navItems),
+                  isDarkMode: isDarkMode,
+                  navItems: navItems,
+                ),
+
+              // ── CONTENU PRINCIPAL ──────────────────────────────────────────
+              Expanded(
+                child: Column(
+                  children: [
+                    // En-tête supérieur
+                    const HeaderWidget(),
+
+                    // Zone de contenu
+                    Expanded(
+                      child: Container(
+                        color: isDarkMode ? const Color(0xFF101412) : const Color(0xFFF7F9F7),
+                        child: widget.child,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // ── BARRE INFÉRIEURE FLOTTANTE CAPSULE (STYLE CAPTURE 2 SUR TOUS LES ÉCRANS MOBILES / TABLETTES) ──
+        bottomNavigationBar: showBottomBar
+            ? _ModernSocialBottomBar(
                 selectedIndex: selectedIndex,
                 onTap: (idx) => _onItemTapped(context, idx, navItems),
                 isDarkMode: isDarkMode,
                 navItems: navItems,
-              ),
-
-            // ── CONTENU PRINCIPAL ──────────────────────────────────────────
-            Expanded(
-              child: Column(
-                children: [
-                  // En-tête supérieur
-                  const HeaderWidget(),
-
-                  // Zone de contenu
-                  Expanded(
-                    child: Container(
-                      color: isDarkMode ? const Color(0xFF101412) : const Color(0xFFF7F9F7),
-                      child: child,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+              )
+            : null,
       ),
-      // ── BARRE INFÉRIEURE FLOTTANTE CAPSULE (STYLE CAPTURE 2 SUR TOUS LES ÉCRANS MOBILES / TABLETTES) ──
-      bottomNavigationBar: showBottomBar
-          ? _ModernSocialBottomBar(
-              selectedIndex: selectedIndex,
-              onTap: (idx) => _onItemTapped(context, idx, navItems),
-              isDarkMode: isDarkMode,
-              navItems: navItems,
-            )
-          : null,
     );
   }
 }

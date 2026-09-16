@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -67,11 +68,15 @@ class Std {
 class OffreStdPage extends StatefulWidget {
   final String baseUrl;
   final Map<String, dynamic> currentUser;
+  final String? initialDistrictId;
+  final String? initialCommuneId;
 
   const OffreStdPage({
     super.key,
     required this.baseUrl,
     required this.currentUser,
+    this.initialDistrictId,
+    this.initialCommuneId,
   });
 
   @override
@@ -102,8 +107,20 @@ class _OffreStdPageState extends State<OffreStdPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialDistrictId != null && widget.initialDistrictId!.isNotEmpty) {
+      _districtFilter = widget.initialDistrictId!;
+    } else if (widget.initialCommuneId != null && widget.initialCommuneId!.isNotEmpty) {
+      _districtFilter = widget.initialCommuneId!;
+    }
     _checkUserRole();
     _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _newOffreNameController.dispose();
+    _newOffreDescriptionController.dispose();
+    super.dispose();
   }
 
   void _checkUserRole() {
@@ -139,7 +156,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
       // 1. Charger l'affiliation STD
       if (_isStdRole && widget.currentUser['user_id'] != null) {
         try {
-          final affUrl = Uri.parse('${widget.baseUrl}/serviceaffiliation/affiliation-std/user/${widget.currentUser['user_id']}');
+          final affUrl = Uri.parse('${widget.baseUrl}/affiliation-std/user/${widget.currentUser['user_id']}');
           final affRes = await http.get(affUrl, headers: headers).timeout(const Duration(seconds: 10));
           if (affRes.statusCode == 200) {
             final data = jsonDecode(affRes.body);
@@ -176,7 +193,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
       // 3. Charger les STDs
       List<Std> activeStds = [];
       try {
-        final stdUrl = Uri.parse('${widget.baseUrl}/serviceaffiliation/stds');
+        final stdUrl = Uri.parse('${widget.baseUrl}/stds');
         final stdRes = await http.get(stdUrl, headers: headers).timeout(const Duration(seconds: 10));
         if (stdRes.statusCode == 200) {
           final List data = jsonDecode(stdRes.body);
@@ -191,7 +208,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
 
       // 4. Charger les offres
       try {
-        final offreUrl = Uri.parse('${widget.baseUrl}/serviceaffiliation/offres');
+        final offreUrl = Uri.parse('${widget.baseUrl}/offres');
         final offreRes = await http.get(offreUrl, headers: headers).timeout(const Duration(seconds: 10));
         if (offreRes.statusCode == 200) {
           final List data = jsonDecode(offreRes.body);
@@ -224,6 +241,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
               _offres = loadedOffres;
               _filteredOffres = loadedOffres;
             });
+            _filterOffres();
           }
         }
       } catch (e) {
@@ -263,7 +281,15 @@ class _OffreStdPageState extends State<OffreStdPage> {
         if (territoires == null) return false;
         return territoires.any((t) {
           final id = t['formatted_id']?.toString() ?? t['id']?.toString() ?? t['code']?.toString() ?? '';
-          return id == _districtFilter;
+          if (id == _districtFilter) return true;
+          if (id.length >= 4 && _districtFilter.length >= 4) {
+            final cleanId = id.replaceAll(RegExp(r'0+$'), '');
+            final cleanFilter = _districtFilter.replaceAll(RegExp(r'0+$'), '');
+            if (cleanId.isNotEmpty && cleanFilter.isNotEmpty && (cleanId.startsWith(cleanFilter) || cleanFilter.startsWith(cleanId))) {
+              return true;
+            }
+          }
+          return false;
         });
       }).toList();
     }
@@ -285,7 +311,7 @@ class _OffreStdPageState extends State<OffreStdPage> {
     setState(() => _isCreating = true);
     try {
       final token = await _getToken();
-      final url = Uri.parse('${widget.baseUrl}/serviceaffiliation/offres');
+      final url = Uri.parse('${widget.baseUrl}/offres');
 
       final response = await http.post(
         url,
@@ -342,64 +368,102 @@ class _OffreStdPageState extends State<OffreStdPage> {
   @override
   Widget build(BuildContext context) {
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 700;
+    final bool isTablet = screenWidth >= 700 && screenWidth < 1100;
 
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 36.0),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── En-tête ──────────────────────────────────────────────────
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF098E00).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.layers_rounded, color: Color(0xFF098E00), size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.tr('nav_bar.offres'),
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        context.tr('offr_appui.decouvre_service'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_isStdRole)
-                  ElevatedButton.icon(
-                    onPressed: _openCreateModal,
-                    icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                    label: Text(context.tr('ajouter'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF098E00),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 2,
+            // ── Top Navigation Bar ───────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+                border: Border(bottom: BorderSide(color: isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+              ),
+              child: Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/itantsorika-services'),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: isDarkMode ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                      foregroundColor: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                      side: BorderSide(color: isDarkMode ? const Color(0xFF475569) : const Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     ),
+                    icon: const Icon(Icons.arrow_back, size: 16),
+                    label: const Text("Retour aux services I-Tantsoroka", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
+
+            // ── Zone de contenu principal scrollable ────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.all(isMobile ? 16 : 28),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── En-tête Titre + Bouton Ajouter ────────────────────
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF098E00).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Icons.layers_rounded, color: Color(0xFF098E00), size: 28),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.tr('nav_bar.offres'),
+                                    style: TextStyle(
+                                      fontSize: isMobile ? 22 : 26,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    context.tr('offr_appui.decouvre_service'),
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      color: isDarkMode ? Colors.grey.shade400 : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_isStdRole)
+                              ElevatedButton.icon(
+                                onPressed: _openCreateModal,
+                                icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                                label: Text(context.tr('ajouter'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF098E00),
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 2,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
 
             // ── Carte Filtres ─────────────────────────────────────────────
             Container(
@@ -513,8 +577,8 @@ class _OffreStdPageState extends State<OffreStdPage> {
                     : GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 380,
+                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: isMobile ? 600 : (isTablet ? 420 : 380),
                           mainAxisSpacing: 20,
                           crossAxisSpacing: 20,
                           mainAxisExtent: 260,
@@ -661,7 +725,13 @@ class _OffreStdPageState extends State<OffreStdPage> {
                           );
                         },
                       ),
-          ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
         ),
       ),
     );
@@ -736,8 +806,14 @@ class _OffreStdPageState extends State<OffreStdPage> {
   }
 
   Widget _buildDistrictDropdown(bool isDarkMode) {
+    final hasMatchingItem = _districtFilter == 'all' || _districts.any((d) {
+      final id = d['formatted_id']?.toString() ?? d['id']?.toString() ?? d['name']?.toString() ?? '';
+      return id == _districtFilter;
+    });
+    final dropdownValue = hasMatchingItem ? _districtFilter : 'all';
+
     return DropdownButtonFormField<String>(
-      initialValue: _districtFilter,
+      initialValue: dropdownValue,
       isExpanded: true,
       dropdownColor: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
       style: TextStyle(color: isDarkMode ? Colors.white : const Color(0xFF0F172A), fontSize: 14),
@@ -884,10 +960,16 @@ class _OffreStdPageState extends State<OffreStdPage> {
             ],
           ),
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // Bouton Fermer X en haut à droite
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -1088,7 +1170,9 @@ class _OffreStdPageState extends State<OffreStdPage> {
                   ],
                 ),
               ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),

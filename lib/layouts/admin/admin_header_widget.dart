@@ -34,12 +34,25 @@ class _AdminHeaderWidgetState extends State<AdminHeaderWidget>
   Map<String, dynamic>? _fullProfile;
   late AnimationController _menuIconController;
 
-  final bool isAuthenticated = true;
-  final dynamic user = {
-    'user_id': 1,
-    'user_pseudo': 'Admin',
-    'user_email': 'admin@example.com',
-  };
+  bool get isAuthenticated {
+    final auth = _getAuth(context);
+    return auth?.isAuthenticated ?? false;
+  }
+
+  dynamic get user {
+    if (_fullProfile != null) return _fullProfile;
+    final auth = _getAuth(context);
+    if (auth != null && auth.user != null) {
+      return {
+        'user': {
+          'user_id': auth.user!.userId,
+          'user_pseudo': auth.user!.userPseudo,
+          'user_email': auth.userEmail,
+        }
+      };
+    }
+    return null;
+  }
 
   @override
   void initState() {

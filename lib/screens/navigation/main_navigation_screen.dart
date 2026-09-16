@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itantsoroka/constants/api_constants.dart';
 import '../home/home_screen.dart';
 import '../home/monography_screen.dart';
 import '../offre_std/offre_std_page.dart';
@@ -18,8 +19,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _pages = [
     const HomePage(),
     const MonographieScreen(),
-    OffreStdPage(baseUrl: "https://gateway.tsirylab.com", currentUser: const {}),
-    const TousDocumentsWidget(baseUrl: "https://gateway.tsirylab.com"),
+    OffreStdPage(baseUrl: ApiConstants.serviceAffiliation, currentUser: const {}),
+    TousDocumentsWidget(baseUrl: ApiConstants.gatewayBaseUrl),
     const PublishPagePrincipalScreen(),
   ];
 

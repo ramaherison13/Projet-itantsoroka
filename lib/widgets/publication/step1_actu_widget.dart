@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/territory_service.dart';
 
 // Modèle de données pour les listes
 class DistrictModel {
@@ -90,9 +91,7 @@ class _Step1ActuWidgetState extends State<Step1ActuWidget> {
 
     _fetchEventTypes();
     _fetchDistricts();
-    if (widget.isSuperAdmin ? (widget.formData['districtId'] != null && widget.formData['districtId'].toString().isNotEmpty) : widget.userDistrictId != null) {
-      _fetchCommunes();
-    }
+    _fetchCommunes();
   }
 
   @override
@@ -114,7 +113,7 @@ class _Step1ActuWidgetState extends State<Step1ActuWidget> {
   Future<void> _fetchEventTypes() async {
     setState(() => _loadingTypes = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 300)); // Simulation API
+      await Future.delayed(const Duration(milliseconds: 300));
       setState(() {
         _types = [
           TypeModel(id: '1', name: 'Conférence'),
@@ -132,13 +131,24 @@ class _Step1ActuWidgetState extends State<Step1ActuWidget> {
   Future<void> _fetchDistricts() async {
     setState(() => _loadingDistricts = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      setState(() {
-        _districts = [
-          DistrictModel(id: 'd1', formattedId: 'ANT_01', name: 'Antananarivo Renivohitra'),
-          DistrictModel(id: 'd2', formattedId: 'ANT_02', name: 'Atsimondrano'),
-        ];
-      });
+      final list = await TerritoryService.getDistrictsBasic();
+      if (list != null && list.isNotEmpty) {
+        setState(() {
+          _districts = list.map((d) {
+            final fId = d['formatted_id']?.toString() ?? d['id']?.toString() ?? '';
+            final dId = d['district_id']?.toString() ?? d['id']?.toString() ?? fId;
+            final name = d['district_name'] ?? d['name'] ?? d['nom'] ?? fId;
+            return DistrictModel(id: dId, formattedId: fId, name: name);
+          }).toList();
+        });
+      } else {
+        setState(() {
+          _districts = [
+            DistrictModel(id: 'd1', formattedId: 'ANT_01', name: 'Antananarivo Renivohitra'),
+            DistrictModel(id: 'd2', formattedId: 'ANT_02', name: 'Atsimondrano'),
+          ];
+        });
+      }
     } catch (e) {
       setState(() => _districts = []);
     } finally {
@@ -147,21 +157,32 @@ class _Step1ActuWidgetState extends State<Step1ActuWidget> {
   }
 
   Future<void> _fetchCommunes() async {
-    final targetDistrictId = widget.isSuperAdmin ? widget.formData['districtId'] : widget.userDistrictId;
-    if (targetDistrictId == null || targetDistrictId.toString().isEmpty) {
-      setState(() => _communes = []);
-      return;
-    }
-
     setState(() => _loadingCommunes = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      setState(() {
-        _communes = [
-          CommuneModel(id: 'c1', formattedId: 'ANT_01_C1', name: 'Analakely'),
-          CommuneModel(id: 'c2', formattedId: 'ANT_01_C2', name: 'Isoraka'),
-        ];
-      });
+      final targetDistrictId = widget.isSuperAdmin ? widget.formData['districtId'] : widget.userDistrictId;
+      List<dynamic>? list;
+      if (targetDistrictId != null && targetDistrictId.toString().isNotEmpty) {
+        list = await TerritoryService.getCommunesByDistrict(targetDistrictId.toString());
+      }
+      list ??= await TerritoryService.getCommunesBasic();
+
+      if (list != null && list.isNotEmpty) {
+        setState(() {
+          _communes = list!.map((c) {
+            final fId = c['formatted_id']?.toString() ?? c['id']?.toString() ?? '';
+            final cId = c['commune_id']?.toString() ?? c['id']?.toString() ?? fId;
+            final name = c['commune_name'] ?? c['name'] ?? c['nom'] ?? fId;
+            return CommuneModel(id: cId, formattedId: fId, name: name);
+          }).toList();
+        });
+      } else {
+        setState(() {
+          _communes = [
+            CommuneModel(id: 'c1', formattedId: 'ANT_01_C1', name: 'Analakely'),
+            CommuneModel(id: 'c2', formattedId: 'ANT_01_C2', name: 'Isoraka'),
+          ];
+        });
+      }
     } catch (e) {
       setState(() => _communes = []);
     } finally {

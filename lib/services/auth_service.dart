@@ -4,6 +4,29 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'role_service.dart'; // Assurez-vous d'importer le service des rôles
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers de stockage du token applicatif — miroir de authApi.ts (React)
+// storeAppToken  : persiste le JWT dans SharedPreferences
+// getAppToken    : lit le JWT depuis SharedPreferences
+// clearAppToken  : efface le JWT et les métadonnées de session
+// ─────────────────────────────────────────────────────────────────────────────
+Future<void> storeAppToken(String token) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('access_token', token);
+}
+
+Future<String?> getAppToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('access_token');
+}
+
+Future<void> clearAppToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('access_token');
+  await prefs.remove('isActivated');
+  await prefs.remove('roles');
+}
+
 class UpdateProfileData {
   final String? userPseudo;
   final String? userEmail;
@@ -43,6 +66,18 @@ class UpdateProfileData {
 /// - POST   https://gateway.tsirylab.com/serviceauth/auth/reset-password (Réinitialiser le mot de passe avec le code reçu)
 /// - POST   https://gateway.tsirylab.com/serviceauth/auth/reset-password-without-token (Réinitialiser le mot de passe sans token)
 /// - POST   https://gateway.tsirylab.com/serviceauth/users/register-with-citizen-short (Créer utilisateur + citoyen)
+class SsoResult {
+  final bool loggedIn;
+  final bool needsCitizenForm;
+  final Map<String, dynamic>? data;
+
+  SsoResult({
+    this.loggedIn = false,
+    this.needsCitizenForm = false,
+    this.data,
+  });
+}
+
 class AuthService {
   static const String baseUrl = "https://gateway.tsirylab.com/serviceauth";
 
@@ -277,5 +312,123 @@ class AuthService {
       debugPrint("❌ Erreur complète: $error");
       rethrow;
     }
+  }
+
+  // ── Méthodes SSO Keycloak ─────────────────────────────────────────────────
+
+  /// Étape 1 : Vérifier si l'utilisateur SSO existe et obtenir un JWT applicatif
+  static Future<Map<String, dynamic>> ssoToken(String ssoTokenStr) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/auth/sso/token'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"sso_token": ssoTokenStr}),
+    );
+    return {"status": res.statusCode, "data": jsonDecode(res.body)};
+  }
+
+  /// Étape 2 : Inscription SSO simplifiée (sans données citoyennes complètes)
+  static Future<Map<String, dynamic>> ssoRegister(Map<String, dynamic> payload) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/auth/sso/register'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(payload),
+    );
+    return {"status": res.statusCode, "data": jsonDecode(res.body)};
+  }
+
+  /// Étape 3 : Inscription SSO complète (avec données citoyennes)
+  static Future<Map<String, dynamic>> ssoRegisterComplete(Map<String, dynamic> payload) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/auth/sso/register-complete'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(payload),
+    );
+    return {"status": res.statusCode, "data": jsonDecode(res.body)};
+  }
+
+  /// Orchestrateur : flux SSO complet en 3 étapes
+  /// [citizenExtras] : données citoyennes optionnelles à transmettre dès l'étape 2
+  /// (miroir de ssoFlow.ts → handleSsoLogin(sso_token, citizenExtras))
+  static Future<SsoResult> handleSsoLogin(
+    String ssoTokenStr, {
+    Map<String, dynamic> citizenExtras = const {},
+  }) async {
+    // Étape 1 : utilisateur connu ?
+    final step1 = await ssoToken(ssoTokenStr);
+    if (step1['status'] == 200 || step1['status'] == 201) {
+      return _onLoggedIn(step1['data']);
+    }
+
+    // Étape 2 : inscription simplifiée (+ extras citoyens si fournis)
+    final step2 = await ssoRegister({'sso_token': ssoTokenStr, ...citizenExtras});
+    if (step2['status'] == 200 || step2['status'] == 201) {
+      return _onLoggedIn(step2['data']);
+    }
+
+    if (step2['status'] == 400) {
+      // Données citoyennes manquantes → afficher le formulaire complet
+      return SsoResult(needsCitizenForm: true);
+    }
+
+    throw Exception(step2['data']?['message'] ?? 'Échec du flow SSO Keycloak');
+  }
+
+  /// Extrait et stocke le token JWT applicatif après connexion SSO réussie.
+  /// Miroir de onLoggedIn() dans ssoFlow.ts.
+  static Future<SsoResult> _onLoggedIn(Map<String, dynamic> data) async {
+    final token =
+        data['access_token']?.toString() ??
+        data['token']?.toString() ??
+        data['jwt']?.toString();
+    if (token != null && token.isNotEmpty) {
+      await storeAppToken(token);
+    }
+    return SsoResult(loggedIn: true, data: data);
+  }
+
+  /// Finaliser l'inscription citoyenne et obtenir le JWT
+  /// Miroir de completeCitizenRegistration() dans ssoFlow.ts
+  static Future<SsoResult> completeCitizenRegistration(
+    String ssoTokenStr,
+    Map<String, dynamic> citizenData,
+  ) async {
+    final step3 = await ssoRegisterComplete({'sso_token': ssoTokenStr, ...citizenData});
+    if (step3['status'] != 200 && step3['status'] != 201) {
+      throw Exception(step3['data']?['message'] ?? "Échec de l'inscription complète");
+    }
+    // Après register-complete, rappel de sso/token pour obtenir le JWT applicatif
+    final finalStep = await ssoToken(ssoTokenStr);
+    if (finalStep['status'] == 200 || finalStep['status'] == 201) {
+      return _onLoggedIn(finalStep['data']);
+    }
+    throw Exception('Inscription complète effectuée mais connexion finale échouée');
+  }
+
+  /// Vérifier la validité du JWT applicatif
+  static Future<bool> verifyToken() async {
+    try {
+      final token = await _resolveAccessToken();
+      final res = await http.get(
+        Uri.parse('$baseUrl/auth/verify-token'),
+        headers: {"Authorization": "Bearer $token"},
+      );
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Déconnexion : couper la session applicative + Keycloak
+  static Future<void> logoutService() async {
+    try {
+      final token = await _resolveAccessToken();
+      await http.post(
+        Uri.parse('$baseUrl/auth/logout'),
+        headers: {"Authorization": "Bearer $token"},
+      );
+    } catch (e) {
+      debugPrint("AuthService: Erreur lors de la déconnexion côté serveur: $e");
+    }
+    await clearAppToken();
   }
 }

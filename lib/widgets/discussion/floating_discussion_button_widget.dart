@@ -24,14 +24,22 @@ class _FloatingDiscussionButtonWidgetState extends State<FloatingDiscussionButto
     }
 
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+    final double modalWidth = isMobile
+        ? MediaQuery.of(context).size.width * 0.94
+        : 420.0;
+    final double modalHeight = isMobile
+        ? MediaQuery.of(context).size.height * 0.82
+        : 600.0;
 
     if (_isOpen) {
       return Material(
         elevation: 24,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          width: 420,
-          height: 600,
+          width: modalWidth,
+          height: modalHeight,
+          constraints: const BoxConstraints(maxWidth: 440, maxHeight: 680),
           decoration: BoxDecoration(
             color: isDarkMode ? Colors.grey.shade900 : Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -48,14 +56,14 @@ class _FloatingDiscussionButtonWidgetState extends State<FloatingDiscussionButto
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 24),
-                    const SizedBox(width: 12),
+                    const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
                         "Discussions",
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

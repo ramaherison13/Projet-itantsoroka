@@ -1,6 +1,14 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:itantsoroka/constants/api_constants.dart';
+import '../../providers/auth_provider.dart';
+import 'file_upload_widget.dart';
 
 class AjoutFormWidget extends StatefulWidget {
   const AjoutFormWidget({super.key});
@@ -16,6 +24,7 @@ class _AjoutFormWidgetState extends State<AjoutFormWidget> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
+  PlatformFile? _selectedFile;
   String? _selectedCategory;
   String? _selectedType;
   final List<String> _selectedThemes = [];
@@ -86,55 +95,138 @@ class _AjoutFormWidgetState extends State<AjoutFormWidget> {
     });
   }
 
+  MediaType _getMediaType(String filename) {
+    final ext = filename.contains('.') ? filename.split('.').last.toLowerCase() : '';
+    switch (ext) {
+      case 'pdf':
+        return MediaType('application', 'pdf');
+      case 'png':
+        return MediaType('image', 'png');
+      case 'jpg':
+      case 'jpeg':
+        return MediaType('image', 'jpeg');
+      case 'doc':
+        return MediaType('application', 'msword');
+      case 'docx':
+        return MediaType('application', 'vnd.openxmlformats-officedocument.wordprocessingml.document');
+      case 'xls':
+        return MediaType('application', 'vnd.ms-excel');
+      case 'xlsx':
+        return MediaType('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      case 'txt':
+        return MediaType('text', 'plain');
+      default:
+        return MediaType('application', 'octet-stream');
+    }
+  }
+
   Future<void> _handleSubmit() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Veuillez renseigner le titre du document"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
 
     try {
-      // Appel API d'ajout de document
-      final Map<String, dynamic> bodyData = {
-        "title": _titleController.text,
-        "description": _descriptionController.text,
-        "category": _selectedCategory ?? "",
-        "type": _selectedType ?? "",
-        "theme": jsonEncode(_selectedThemes),
-        "date": _date,
-        "status": _status,
-      };
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final communeId = authProvider.user?.municipalityId;
 
-      // Envoi vers l'API (remplacer l'URL par votre endpoint réel)
-      await http.post(
-        Uri.parse('https://gateway.tsirylab.com/servicedocument/document'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(bodyData),
-      );
+      final uri = Uri.parse('${ApiConstants.gatewayBaseUrl}/servicebiblio/resources');
+      final request = http.MultipartRequest('POST', uri);
 
-      // Reset form
-      _titleController.clear();
-      _descriptionController.clear();
-      setState(() {
-        _selectedCategory = null;
-        _selectedType = null;
-        _selectedThemes.clear();
-        _status = "Public";
-      });
+      if (_selectedFile != null) {
+        final filename = _selectedFile!.name;
+        final mediaType = _getMediaType(filename);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Document ajouté avec succès !"),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context); // ou navigation vers documents
+        if (kIsWeb || _selectedFile!.bytes != null) {
+          if (_selectedFile!.bytes != null) {
+            request.files.add(
+              http.MultipartFile.fromBytes(
+                'file',
+                _selectedFile!.bytes!,
+                filename: filename,
+                contentType: mediaType,
+              ),
+            );
+          }
+        } else if (_selectedFile!.path != null) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'file',
+              _selectedFile!.path!,
+              filename: filename,
+              contentType: mediaType,
+            ),
+          );
+        }
+      }
+
+      request.fields['title'] = title;
+      request.fields['description'] = _descriptionController.text.trim();
+      request.fields['category'] = _selectedCategory ?? '';
+      request.fields['type'] = _selectedType ?? '';
+      request.fields['date'] = _date;
+      request.fields['status'] = _status;
+      if (communeId != null && communeId.isNotEmpty) {
+        request.fields['communeId'] = communeId;
+      }
+      request.fields['theme'] = jsonEncode(_selectedThemes);
+      request.fields['langage'] = 'fr';
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      debugPrint("POST /servicebiblio/resources response (${response.statusCode}): ${response.body}");
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _titleController.clear();
+        _descriptionController.clear();
+        setState(() {
+          _selectedCategory = null;
+          _selectedType = null;
+          _selectedThemes.clear();
+          _selectedFile = null;
+          _status = "Public";
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Document ajouté avec succès !"),
+              backgroundColor: Color(0xFF098E00),
+            ),
+          );
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            context.go('/itantsorika/documents');
+          }
+        }
+      } else {
+        String serverMsg = "Erreur serveur (${response.statusCode})";
+        try {
+          final resJson = json.decode(response.body);
+          if (resJson is Map && resJson.containsKey('message')) {
+            final m = resJson['message'];
+            serverMsg = m is List ? m.join(', ') : m.toString();
+          }
+        } catch (_) {}
+        throw Exception(serverMsg);
       }
     } catch (error) {
-      debugPrint("$error");
+      debugPrint("Erreur lors de l'ajout du document: $error");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Échec de l'ajout du document"),
+          SnackBar(
+            content: Text("Échec de l'ajout du document: $error"),
             backgroundColor: Colors.red,
           ),
         );
@@ -371,7 +463,7 @@ class _AjoutFormWidgetState extends State<AjoutFormWidget> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: _selectedCategory,
+          initialValue: _selectedType,
           items: _types.map((type) {
             return DropdownMenuItem<String>(
               value: type['name'].toString(),
@@ -468,38 +560,18 @@ class _AjoutFormWidgetState extends State<AjoutFormWidget> {
         ),
         const SizedBox(height: 24),
 
-        // Fichier (FileUpload widget équivalent)
+        // Fichier (FileUpload widget)
         const Text(
           'Ajouter le fichier',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Colors.grey.shade400,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(8),
-            color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-          ),
-          child: Center(
-            child: Column(
-              children: const [
-                Icon(
-                  Icons.cloud_upload_outlined,
-                  size: 36,
-                  color: Colors.green,
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Glissez ou sélectionnez un fichier',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
+        FileUploadWidget(
+          onFileSelect: (file) {
+            setState(() {
+              _selectedFile = file;
+            });
+          },
         ),
         const SizedBox(height: 24),
 

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/territory_service.dart';
 
 // --- Modèle de données pour l'Actualité ---
 class ActuData {
@@ -40,6 +43,50 @@ class _PublishActuScreenState extends State<PublishActuScreen> {
   bool isSubmitting = false;
   String successMessage = "";
   String errorMessage = "";
+
+  List<dynamic> _communesList = [];
+  List<dynamic> _districtsList = [];
+  bool _loadingTerritories = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    formData.startDate = today;
+
+    _loadTerritories();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final userCommune = authProvider.user?.municipalityId;
+      final userDistrict = authProvider.user?.districtId;
+
+      setState(() {
+        if (userCommune != null && userCommune.isNotEmpty && formData.communeId.isEmpty) {
+          formData.communeId = userCommune;
+        }
+        if (userDistrict != null && userDistrict.isNotEmpty && formData.districtId.isEmpty) {
+          formData.districtId = userDistrict;
+        }
+      });
+    });
+  }
+
+  Future<void> _loadTerritories() async {
+    try {
+      final communes = await TerritoryService.getCommunesBasic();
+      final districts = await TerritoryService.getDistrictsBasic();
+      if (mounted) {
+        setState(() {
+          _communesList = communes ?? [];
+          _districtsList = districts ?? [];
+          _loadingTerritories = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingTerritories = false);
+    }
+  }
 
   final ActuData formData = ActuData(
     title: "",
@@ -403,30 +450,43 @@ class _PublishActuScreenState extends State<PublishActuScreen> {
                                     if (currentStep == 1) ...[
                                       const Text("Étape 1 : Informations générales", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 16),
-                                      TextField(
+                                      TextFormField(
+                                        initialValue: formData.title,
                                         onChanged: (val) => _handleInputChange('title', val),
-                                        decoration: const InputDecoration(labelText: "Titre de l'actualité", border: OutlineInputBorder()),
+                                        decoration: InputDecoration(
+                                          labelText: "Titre de l'actualité *",
+                                          prefixIcon: const Icon(Icons.newspaper_rounded, color: Color(0xFF10B981)),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
                                       ),
                                       const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('eventType', val),
-                                        decoration: const InputDecoration(labelText: "Type d'événement", border: OutlineInputBorder()),
+                                      DropdownButtonFormField<String>(
+                                        initialValue: formData.eventType.isNotEmpty ? formData.eventType : null,
+                                        items: const [
+                                          DropdownMenuItem(value: "Communiqué officiel", child: Text("Communiqué officiel")),
+                                          DropdownMenuItem(value: "Information locale", child: Text("Information locale")),
+                                          DropdownMenuItem(value: "Annonce", child: Text("Annonce")),
+                                          DropdownMenuItem(value: "Rapport", child: Text("Rapport")),
+                                        ],
+                                        onChanged: (val) {
+                                          if (val != null) _handleInputChange('eventType', val);
+                                        },
+                                        decoration: InputDecoration(
+                                          labelText: "Type d'actualité *",
+                                          prefixIcon: const Icon(Icons.category_rounded, color: Color(0xFF10B981)),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
                                       ),
                                       const SizedBox(height: 16),
-                                      TextField(
+                                      _buildDatePickerField(
+                                        label: "Date de publication *",
+                                        value: formData.startDate,
                                         onChanged: (val) => _handleInputChange('startDate', val),
-                                        decoration: const InputDecoration(labelText: "Date de publication (YYYY-MM-DD)", border: OutlineInputBorder()),
                                       ),
                                       const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('communeId', val),
-                                        decoration: const InputDecoration(labelText: "ID Commune", border: OutlineInputBorder()),
-                                      ),
+                                      _buildCommuneDropdown(),
                                       const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('districtId', val),
-                                        decoration: const InputDecoration(labelText: "ID District", border: OutlineInputBorder()),
-                                      ),
+                                      _buildDistrictDropdown(),
                                     ] else if (currentStep == 2) ...[
                                       const Text("Étape 2 : Description et détails", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 16),
@@ -529,6 +589,116 @@ class _PublishActuScreenState extends State<PublishActuScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDatePickerField({
+    required String label,
+    required String value,
+    required ValueChanged<String> onChanged,
+    DateTime? firstDate,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: () async {
+        DateTime initial = DateTime.now();
+        if (value.isNotEmpty) {
+          initial = DateTime.tryParse(value) ?? DateTime.now();
+        }
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: initial,
+          firstDate: firstDate ?? DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (picked != null) {
+          onChanged(picked.toIso8601String().split('T')[0]);
+        }
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.calendar_month_rounded, color: Color(0xFF10B981)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        ),
+        child: Text(
+          value.isNotEmpty ? value : "Sélectionner une date",
+          style: TextStyle(
+            fontSize: 14,
+            color: value.isNotEmpty
+                ? (isDarkMode ? Colors.white : const Color(0xFF0F172A))
+                : Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommuneDropdown() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    if (_loadingTerritories) {
+      return const LinearProgressIndicator(color: Color(0xFF10B981));
+    }
+    final selectedVal = _communesList.any((c) => (c['formatted_id']?.toString() ?? c['id']?.toString()) == formData.communeId)
+        ? formData.communeId
+        : (_communesList.isNotEmpty ? (_communesList.first['formatted_id']?.toString() ?? _communesList.first['id']?.toString()) : null);
+
+    return DropdownButtonFormField<String>(
+      initialValue: selectedVal,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: "Commune *",
+        prefixIcon: const Icon(Icons.location_city_rounded, color: Color(0xFF10B981)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      ),
+      items: _communesList.map<DropdownMenuItem<String>>((c) {
+        final id = c['formatted_id']?.toString() ?? c['id']?.toString() ?? '';
+        final name = c['commune_name'] ?? c['name'] ?? c['nom'] ?? id;
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Text(name, overflow: TextOverflow.ellipsis),
+        );
+      }).toList(),
+      onChanged: (val) {
+        if (val != null) _handleInputChange('communeId', val);
+      },
+    );
+  }
+
+  Widget _buildDistrictDropdown() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    if (_loadingTerritories) {
+      return const SizedBox.shrink();
+    }
+    final selectedVal = _districtsList.any((d) => (d['formatted_id']?.toString() ?? d['id']?.toString()) == formData.districtId)
+        ? formData.districtId
+        : (_districtsList.isNotEmpty ? (_districtsList.first['formatted_id']?.toString() ?? _districtsList.first['id']?.toString()) : null);
+
+    return DropdownButtonFormField<String>(
+      initialValue: selectedVal,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: "District *",
+        prefixIcon: const Icon(Icons.map_rounded, color: Color(0xFF10B981)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      ),
+      items: _districtsList.map<DropdownMenuItem<String>>((d) {
+        final id = d['formatted_id']?.toString() ?? d['id']?.toString() ?? '';
+        final name = d['district_name'] ?? d['name'] ?? d['nom'] ?? id;
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Text(name, overflow: TextOverflow.ellipsis),
+        );
+      }).toList(),
+      onChanged: (val) {
+        if (val != null) _handleInputChange('districtId', val);
+      },
     );
   }
 }

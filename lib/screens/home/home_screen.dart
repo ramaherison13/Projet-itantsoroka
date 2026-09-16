@@ -13,6 +13,7 @@ import '../../services/territory_service.dart';
 import '../../services/user_service.dart';
 import '../../services/weather_service.dart';
 import '../../widgets/home/home_alerts_banner.dart'; // Étape 3 : widget isolé
+import '../../widgets/weather/modern_weather_widget.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -360,7 +361,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       'initials': 'MI',
       'image': 'assets/images/LogoMinistereInterieur.jpg',
       'fallbacks': ['assets/images/logo_ministere.jpg'],
-      'url': 'http://mid.gov.mg/',
+      'url': 'https://mid.gov.mg/',
     },
     {
       'name': 'Mionjo',
@@ -374,7 +375,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       'initials': 'DD',
       'image': 'assets/images/logo_dd_v3.png',
       'fallbacks': ['assets/images/logo_dd.png', 'assets/images/DD.png'],
-      'url': 'http://mid.gov.mg/',
+      'url': 'https://mid.gov.mg/',
     },
     {
       'name': 'PNUD',
@@ -623,18 +624,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return label;
   }
 
-  String _translateWeatherDesc(BuildContext context, String desc) {
-    final d = desc.toLowerCase();
-    if (d.contains('dégagé') || d.contains('ensoleillé')) return context.tr('weather_sunny');
-    if (d.contains('partiellement nuageux')) return context.tr('weather_partly_cloudy');
-    if (d.contains('couvert') || d.contains('nuage')) return context.tr('weather_cloudy');
-    if (d.contains('brouillard')) return context.tr('weather_fog');
-    if (d.contains('bruine')) return context.tr('weather_drizzle');
-    if (d.contains('pluie')) return context.tr('weather_rain');
-    if (d.contains('orage')) return context.tr('weather_thunderstorm');
-    if (d.contains('vent') || d.contains('brise')) return context.tr('weather_windy');
-    return desc;
-  }
 
   // ── ÉTAPE 3 : Timer alertes déplacé dans HomeAlertsBanner ─────────────────
 
@@ -698,16 +687,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _performGlobalSearch(BuildContext context, String query) {
-    if (query.trim().isEmpty) return;
-    final filter = _selectedSearchFilter.toLowerCase();
-    if (filter == 'territoires') {
-      context.go('/monographie?q=${Uri.encodeComponent(query)}');
-    } else if (filter == 'documents') {
-      context.go('/document?q=${Uri.encodeComponent(query)}');
-    } else if (filter == 'offres') {
-      context.go('/offrestd?q=${Uri.encodeComponent(query)}');
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) {
+      context.go('/monographie');
     } else {
-      context.go('/monographie?q=${Uri.encodeComponent(query)}');
+      context.go('/monographie?q=${Uri.encodeComponent(cleanQuery)}');
     }
   }
 
@@ -1022,25 +1006,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              // Boutons CTA — colonne sur très petits écrans
-              if (isSmall)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _heroPrimaryBtn(context),
-                    const SizedBox(height: 10),
-                    _heroSecondaryBtn(context),
-                  ],
-                )
-              else
-                Row(
-                  children: [
-                    Expanded(child: _heroPrimaryBtn(context)),
-                    const SizedBox(width: 12),
-                    _heroSecondaryBtn(context),
-                  ],
-                ),
+              // Boutons CTA — adaptatifs (pleine largeur sur mobile, côte à côte sur grand écran)
+              LayoutBuilder(
+                builder: (context, heroConstraints) {
+                  final bool isCompact = isMobile || heroConstraints.maxWidth < 460;
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: _heroPrimaryBtn(context),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: _heroSecondaryBtn(context),
+                        ),
+                      ],
+                    );
+                  }
+                  return Wrap(
+                    spacing: 14,
+                    runSpacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _heroPrimaryBtn(context),
+                      _heroSecondaryBtn(context),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
         ],
@@ -1078,30 +1074,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _heroPrimaryBtn(BuildContext context) => ElevatedButton.icon(
     style: ElevatedButton.styleFrom(
-      elevation: 0,
+      elevation: 2,
+      shadowColor: Colors.black26,
       backgroundColor: Colors.white,
       foregroundColor: const Color(0xFF0D7817),
-      padding: const EdgeInsets.symmetric(vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     onPressed: () => context.go('/monographie'),
-    icon: const Icon(Icons.map_outlined, size: 17),
+    icon: const Icon(Icons.map_outlined, size: 18),
     label: Text(
       context.tr('home_access_monog'),
-      style: const TextStyle(fontWeight: FontWeight.bold),
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
     ),
   );
 
   Widget _heroSecondaryBtn(BuildContext context) => OutlinedButton.icon(
     style: OutlinedButton.styleFrom(
-      side: const BorderSide(color: Colors.white70),
+      side: const BorderSide(color: Colors.white70, width: 1.5),
       foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     onPressed: () => context.go('/officeprojet'),
-    icon: const Icon(Icons.business_center_outlined, size: 17),
-    label: Text(context.tr('home_see_projects')),
+    icon: const Icon(Icons.business_center_outlined, size: 18),
+    label: Text(
+      context.tr('home_see_projects'),
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+    ),
   );
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1236,7 +1236,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _searchChip(String label, IconData icon, bool isDark) {
     final selected = _selectedSearchFilter == label;
     return InkWell(
-      onTap: () => setState(() => _selectedSearchFilter = label),
+      onTap: () {
+        setState(() => _selectedSearchFilter = label);
+        _performGlobalSearch(context, _searchController.text);
+      },
       borderRadius: BorderRadius.circular(11),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -1541,7 +1544,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       },
     ];
 
-    int crossAxisCount = _Bp.isMobile(w) ? 2 : (_Bp.isTablet(w) ? 3 : 5);
+    int crossAxisCount = _Bp.isMobileSmall(w) ? 1 : (_Bp.isMobile(w) ? 2 : (_Bp.isTablet(w) ? 3 : 5));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1687,297 +1690,47 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   // 6. WIDGET MÉTÉO & RÉGIONS — Responsive plein écran
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildRegionalWidget(BuildContext context, bool isDark, double w) {
-    final bool isMobile = _Bp.isMobile(w);
-    final bool isSmall = _Bp.isMobileSmall(w);
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isSmall ? 14 : (isMobile ? 18 : 22)),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(isMobile ? 20 : 24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // En-tête + sélecteur de région
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.wb_sunny_rounded,
-                  color: Colors.amber,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr('home_regional_data'),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isSmall ? 13 : 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (!isSmall)
-                      Text(
-                        context.tr('home_23_regions'),
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
-                      ),
-                    if (_weatherLocationLabel.isNotEmpty)
-                      Text(
-                        _weatherLocationLabel,
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 11,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Dropdown région — plus compact sur mobile
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedRegion,
-                  dropdownColor: const Color(0xFF1E293B),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: isSmall ? 11 : 13,
-                  ),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  items: _regionalInfos.keys
-                      .map(
-                        (reg) => DropdownMenuItem<String>(
-                          value: reg,
-                          child: Text(
-                            reg,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) {
-                      setState(() => _selectedRegion = v);
-                      _fetchWeatherForRegion(v);
-                    }
-                  },
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.my_location_rounded, color: Colors.amberAccent, size: 20),
-                tooltip: context.tr('tooltip_gps'),
-                onPressed: () => _initWeather(),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white70, size: 20),
-                tooltip: context.tr('tooltip_refresh'),
-                onPressed: () => _fetchWeatherForRegion(_selectedRegion),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Contenu météo + stats (lisible et responsive sur tous les écrans)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _weatherDisplayState(isSmall),
-              const SizedBox(height: 16),
-              const Divider(color: Colors.white24, height: 1),
-              const SizedBox(height: 16),
-              _regionStats(
-                _regionalInfos[_selectedRegion] ??
-                    _regionalInfos['Analamanga']!,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getWeatherIcon(dynamic weatherCode, String desc) {
-    if (weatherCode is int) {
-      if (weatherCode == 0 || weatherCode == 1) return Icons.wb_sunny_rounded;
-      if (weatherCode == 2) return Icons.wb_cloudy_rounded;
-      if (weatherCode == 3) return Icons.cloud_rounded;
-      if (weatherCode >= 45 && weatherCode <= 48) return Icons.cloud_outlined;
-      if (weatherCode >= 51 && weatherCode <= 67) return Icons.grain_outlined;
-      if (weatherCode >= 80 && weatherCode <= 82) return Icons.water_drop_rounded;
-      if (weatherCode >= 95) return Icons.thunderstorm_rounded;
-    }
-    final d = desc.toLowerCase();
-    if (d.contains('pluie') || d.contains('averse') || d.contains('bruine')) return Icons.water_drop_rounded;
-    if (d.contains('nuage') || d.contains('couvert')) return Icons.cloud_rounded;
-    if (d.contains('orage')) return Icons.thunderstorm_rounded;
-    if (d.contains('vent') || d.contains('brise')) return Icons.air_rounded;
-    return Icons.wb_sunny_rounded;
-  }
-
-  Widget _weatherDisplayState(bool isSmall) {
-    if (_loadingWeather) {
-      return SizedBox(
-        height: isSmall ? 90 : 120,
-        child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-      );
-    }
-
-    final regionalFallback = _regionalInfos[_selectedRegion] ?? _regionalInfos['Analamanga']!;
-
-    String temp = regionalFallback['temp']?.toString() ?? '24°C';
-    String weatherDesc = regionalFallback['weather']?.toString() ?? 'Ensoleillé';
-    String hum = regionalFallback['humi']?.toString() ?? '65%';
-    String wind = regionalFallback['wind']?.toString() ?? '14 km/h';
-    String pressure = '1013 hPa';
-    String sunrise = '06:00';
-    String sunset = '18:00';
-    String tempRange = '';
-    IconData weatherIcon = regionalFallback['icon'] as IconData? ?? Icons.wb_sunny_outlined;
-
-    if (_weatherData != null) {
-      if (_weatherData!.containsKey('weather_desc')) {
-        temp = '${_weatherData!['temp']}°C';
-        weatherDesc = _weatherData!['weather_desc']?.toString() ?? weatherDesc;
-        hum = '${_weatherData!['humidity']}%';
-        wind = '${_weatherData!['wind_speed']} km/h';
-        pressure = '${_weatherData!['pressure']} hPa';
-        sunrise = _weatherData!['sunrise']?.toString() ?? '06:00';
-        sunset = _weatherData!['sunset']?.toString() ?? '18:00';
-        if (_weatherData!['temp_min'] != null && _weatherData!['temp_max'] != null) {
-          tempRange = 'Min: ${_weatherData!['temp_min']}°C  •  Max: ${_weatherData!['temp_max']}°C';
-        }
-        weatherIcon = _getWeatherIcon(_weatherData!['weather_code'], weatherDesc);
-      } else if (_weatherData!.containsKey('current')) {
-        final current = _weatherData!['current'] as Map<String, dynamic>;
-        temp = current['temp'] != null ? '${current['temp']}°C' : temp;
-        hum = current['humidity'] != null ? '${current['humidity']}%' : hum;
-        wind = current['wind_speed'] != null ? '${current['wind_speed']} m/s' : wind;
-        pressure = current['pressure'] != null ? '${current['pressure']} hPa' : pressure;
-        if (current['weather'] is List && (current['weather'] as List).isNotEmpty) {
-          final w0 = (current['weather'] as List).first;
-          if (w0 is Map && w0.containsKey('description')) {
-            weatherDesc = w0['description'].toString();
-          }
-        }
-        weatherIcon = _getWeatherIcon(null, weatherDesc);
-      }
-    } else {
-      weatherIcon = _getWeatherIcon(null, weatherDesc);
-    }
-
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 16,
-      runSpacing: 12,
+    return Column(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(weatherIcon, color: Colors.amber, size: isSmall ? 36 : 44),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      temp,
-                      style: TextStyle(
-                        fontSize: isSmall ? 22 : 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _translateWeatherDesc(context, weatherDesc),
-                      style: TextStyle(
-                        fontSize: isSmall ? 12 : 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-                if (tempRange.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    tempRange,
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  '${context.tr('humidite')}: $hum  •  ${context.tr('vent')}: $wind  •  ${context.tr('pression')}: $pressure',
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ],
-            ),
-          ],
+        ModernWeatherCard(
+          weatherData: _weatherData,
+          regionalFallback: _regionalInfos[_selectedRegion] ?? _regionalInfos['Analamanga']!,
+          selectedRegion: _selectedRegion,
+          availableRegions: _regionalInfos.keys.toList(),
+          onRegionChanged: (v) {
+            setState(() => _selectedRegion = v);
+            _fetchWeatherForRegion(v);
+          },
+          onGpsPressed: () => _initWeather(),
+          onRefreshPressed: () => _fetchWeatherForRegion(_selectedRegion),
+          isLoading: _loadingWeather,
+          locationLabel: _weatherLocationLabel,
         ),
-        if (!isSmall)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.wb_twilight_rounded, color: Colors.amber, size: 14),
-                  const SizedBox(width: 4),
-                  Text('${context.tr('lever')}: $sunrise', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.nights_stay_rounded, color: Colors.indigoAccent, size: 14),
-                  const SizedBox(width: 4),
-                  Text('${context.tr('coucher')}: $sunset', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                ],
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
+          child: _regionStats(
+            _regionalInfos[_selectedRegion] ?? _regionalInfos['Analamanga']!,
+          ),
+        ),
       ],
     );
   }
 
-  // legacy simple display removed (replaced by _weatherDisplayState)
+  // legacy simple display removed (replaced by ModernWeatherCard)
 
   int? _findCommuneCountNormalized(String regionName) {
     final search = regionName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
@@ -2759,9 +2512,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _fetchNews() async {
+    if (!mounted) return;
     setState(() => _loadingNews = true);
     try {
       final response = await EventService.getEvents(page: 1, limit: 5);
+      if (!mounted) return;
       if (response is Map<String, dynamic>) {
         final data = response['data'];
         final items = data is List ? data : [];
@@ -2788,10 +2543,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     } catch (e) {
       debugPrint('Erreur actualités: $e');
-      setState(() {
-        _newsItems = [];
-        _newsTotal = 0;
-      });
+      if (mounted) {
+        setState(() {
+          _newsItems = [];
+          _newsTotal = 0;
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _loadingNews = false);

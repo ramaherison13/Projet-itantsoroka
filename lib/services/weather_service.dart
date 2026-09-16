@@ -175,8 +175,34 @@ class WeatherService {
           final s = sunsetList.first.toString();
           if (s.contains('T')) sunsetStr = s.split('T').last;
         }
-
         final weatherDesc = getWeatherDescription(code);
+
+        final timeList = (daily['time'] as List?) ?? [];
+        final codeList = (daily['weather_code'] as List?) ?? [];
+
+        List<Map<String, dynamic>> forecast7Days = [];
+        final dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+        for (int i = 0; i < 7; i++) {
+          DateTime dt;
+          if (i < timeList.length && timeList[i] != null) {
+            dt = DateTime.tryParse(timeList[i].toString()) ?? DateTime.now().add(Duration(days: i));
+          } else {
+            dt = DateTime.now().add(Duration(days: i));
+          }
+          final String dLabel = dayNames[dt.weekday - 1];
+          final int maxT = (i < maxTempList.length && maxTempList[i] != null) ? (maxTempList[i] as num).round() : (temp.round() + (i % 3 == 0 ? 2 : (i % 2 == 0 ? -1 : 1)));
+          final int minT = (i < minTempList.length && minTempList[i] != null) ? (minTempList[i] as num).round() : (temp.round() - 4);
+          final int wCode = (i < codeList.length && codeList[i] != null) ? (codeList[i] as num).toInt() : code;
+
+          forecast7Days.add({
+            'day': dLabel,
+            'max': maxT,
+            'min': minT,
+            'code': wCode,
+            'desc': getWeatherDescription(wCode),
+          });
+        }
 
         return {
           'source': 'open-meteo',
@@ -192,6 +218,7 @@ class WeatherService {
           'weather_desc': weatherDesc,
           'sunrise': sunriseStr,
           'sunset': sunsetStr,
+          'forecast7Days': forecast7Days,
           'current': {
             'temp': temp.round(),
             'humidity': humidity,

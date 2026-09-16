@@ -7,11 +7,19 @@ import '../../l10n/app_localization.dart';
 class TousDocumentsWidget extends StatefulWidget {
   final String? initialTheme;
   final String baseUrl;
+  /// Pré-filtre par district (formatted_id) venant de la monographie
+  final String? initialDistrictId;
+  /// Pré-filtre par commune (formatted_id) venant de la monographie
+  final String? initialCommuneId;
+  final String? initialTerritoireName;
 
   const TousDocumentsWidget({
     super.key,
     this.initialTheme,
     required this.baseUrl,
+    this.initialDistrictId,
+    this.initialCommuneId,
+    this.initialTerritoireName,
   });
 
   @override
@@ -168,7 +176,29 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
       }
 
       setState(() {
-        _documents = allDocuments;
+        // Filtrage post-chargement par territoire si venant de la monographie
+        if (widget.initialDistrictId != null && widget.initialDistrictId!.isNotEmpty) {
+          final distId = widget.initialDistrictId!;
+          _documents = allDocuments.where((doc) {
+            final dId = (doc['district_id'] ?? doc['districtId'] ?? '').toString();
+            final cId = (doc['commune_id'] ?? doc['communeId'] ?? '').toString();
+            if (dId.isNotEmpty && dId == distId) return true;
+            // Vérification via le formatted_id de la commune (6 derniers chiffres à 000000)
+            if (cId.length >= 6) {
+              final derivedDistId = '${cId.substring(0, cId.length - 6)}000000';
+              return derivedDistId == distId;
+            }
+            return false;
+          }).toList();
+        } else if (widget.initialCommuneId != null && widget.initialCommuneId!.isNotEmpty) {
+          final comId = widget.initialCommuneId!;
+          _documents = allDocuments.where((doc) {
+            final cId = (doc['commune_id'] ?? doc['communeId'] ?? '').toString();
+            return cId == comId;
+          }).toList();
+        } else {
+          _documents = allDocuments;
+        }
         _loading = false;
       });
     } catch (e) {
@@ -628,7 +658,10 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 8,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -645,6 +678,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                                           ],
                                         ),
                                         child: Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Icon(Icons.folder_copy_rounded, size: 16, color: Color(0xFF098E00)),
                                             const SizedBox(width: 8),
@@ -659,8 +693,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                                           ],
                                         ),
                                       ),
-                                      if (_activeFiltersCount > 0) ...[
-                                        const SizedBox(width: 12),
+                                      if (_activeFiltersCount > 0)
                                         ElevatedButton.icon(
                                           onPressed: _clearAllFilters,
                                           icon: const Icon(Icons.clear_rounded, size: 16),
@@ -673,7 +706,6 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                           ),
                                         ),
-                                      ],
                                     ],
                                   ),
                                   const SizedBox(height: 16),
@@ -696,7 +728,7 @@ class _TousDocumentsWidgetState extends State<TousDocumentsWidget> {
                                                   crossAxisCount: crossAxisCount,
                                                   crossAxisSpacing: 16,
                                                   mainAxisSpacing: 16,
-                                                  mainAxisExtent: 220,
+                                                  mainAxisExtent: 310,
                                                 ),
                                                 itemCount: filteredDocuments.length,
                                                 itemBuilder: (context, index) {

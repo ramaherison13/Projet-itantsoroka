@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/territory_service.dart';
 
 // --- Modèle de données pour le Projet ---
 class ProjectData {
@@ -42,6 +45,45 @@ class _PublishProjectScreenState extends State<PublishProjectScreen> {
   bool isSubmitting = false;
   String successMessage = "";
   String errorMessage = "";
+
+  List<dynamic> _communesList = [];
+  bool _loadingTerritories = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final nextMonth = DateTime.now().add(const Duration(days: 30)).toIso8601String().split('T')[0];
+    formData.startDate = today;
+    formData.deadline = nextMonth;
+
+    _loadTerritories();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final userCommune = authProvider.user?.municipalityId;
+
+      setState(() {
+        if (userCommune != null && userCommune.isNotEmpty && formData.communeId.isEmpty) {
+          formData.communeId = userCommune;
+        }
+      });
+    });
+  }
+
+  Future<void> _loadTerritories() async {
+    try {
+      final communes = await TerritoryService.getCommunesBasic();
+      if (mounted) {
+        setState(() {
+          _communesList = communes ?? [];
+          _loadingTerritories = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingTerritories = false);
+    }
+  }
 
   final ProjectData formData = ProjectData(
     name: "",
@@ -389,32 +431,69 @@ class _PublishProjectScreenState extends State<PublishProjectScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     if (currentStep == 1) ...[
-                                      const Text("Étape 1 : Informations générales", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('name', val),
-                                        decoration: const InputDecoration(labelText: "Nom du projet", border: OutlineInputBorder()),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('startDate', val),
-                                        decoration: const InputDecoration(labelText: "Date de début (YYYY-MM-DD)", border: OutlineInputBorder()),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('deadline', val),
-                                        decoration: const InputDecoration(labelText: "Date limite (YYYY-MM-DD)", border: OutlineInputBorder()),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('theme_name', val),
-                                        decoration: const InputDecoration(labelText: "Nom du thème", border: OutlineInputBorder()),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      TextField(
-                                        onChanged: (val) => _handleInputChange('commune_id', val),
-                                        decoration: const InputDecoration(labelText: "ID Commune", border: OutlineInputBorder()),
-                                      ),
+                                       const Text("Étape 1 : Informations générales", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                       const SizedBox(height: 16),
+                                       TextFormField(
+                                         initialValue: formData.name,
+                                         onChanged: (val) => _handleInputChange('name', val),
+                                         decoration: InputDecoration(
+                                           labelText: "Nom du projet *",
+                                           prefixIcon: const Icon(Icons.work_rounded, color: Color(0xFF10B981)),
+                                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                         ),
+                                       ),
+                                       const SizedBox(height: 16),
+                                       DropdownButtonFormField<String>(
+                                         initialValue: formData.themeName.isNotEmpty ? formData.themeName : "Infrastructures",
+                                         items: const [
+                                           DropdownMenuItem(value: "Infrastructures", child: Text("Infrastructures")),
+                                           DropdownMenuItem(value: "Environnement", child: Text("Environnement")),
+                                           DropdownMenuItem(value: "Éducation", child: Text("Éducation")),
+                                           DropdownMenuItem(value: "Santé", child: Text("Santé")),
+                                           DropdownMenuItem(value: "Agriculture", child: Text("Agriculture")),
+                                         ],
+                                         onChanged: (val) {
+                                           if (val != null) _handleInputChange('theme_name', val);
+                                         },
+                                         decoration: InputDecoration(
+                                           labelText: "Thème du projet *",
+                                           prefixIcon: const Icon(Icons.category_rounded, color: Color(0xFF10B981)),
+                                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                         ),
+                                       ),
+                                       const SizedBox(height: 16),
+                                       Row(
+                                         children: [
+                                           Expanded(
+                                             child: _buildDatePickerField(
+                                               label: "Date de début *",
+                                               value: formData.startDate,
+                                               onChanged: (val) {
+                                                 _handleInputChange('startDate', val);
+                                                 try {
+                                                   final start = DateTime.parse(val);
+                                                   final end = DateTime.tryParse(formData.deadline);
+                                                   if (end == null || end.isBefore(start)) {
+                                                     final newDeadline = start.add(const Duration(days: 30)).toIso8601String().split('T')[0];
+                                                     _handleInputChange('deadline', newDeadline);
+                                                   }
+                                                 } catch (_) {}
+                                               },
+                                             ),
+                                           ),
+                                           const SizedBox(width: 12),
+                                           Expanded(
+                                             child: _buildDatePickerField(
+                                               label: "Date limite *",
+                                               value: formData.deadline,
+                                               firstDate: DateTime.tryParse(formData.startDate),
+                                               onChanged: (val) => _handleInputChange('deadline', val),
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                       const SizedBox(height: 16),
+                                       _buildCommuneDropdown(),
                                     ] else if (currentStep == 2) ...[
                                       const Text("Étape 2 : Description et objectifs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 16),
@@ -529,6 +608,83 @@ class _PublishProjectScreenState extends State<PublishProjectScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDatePickerField({
+    required String label,
+    required String value,
+    required ValueChanged<String> onChanged,
+    DateTime? firstDate,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: () async {
+        DateTime initial = DateTime.now();
+        if (value.isNotEmpty) {
+          initial = DateTime.tryParse(value) ?? DateTime.now();
+        }
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: initial,
+          firstDate: firstDate ?? DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (picked != null) {
+          onChanged(picked.toIso8601String().split('T')[0]);
+        }
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.calendar_month_rounded, color: Color(0xFF10B981)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        ),
+        child: Text(
+          value.isNotEmpty ? value : "Sélectionner une date",
+          style: TextStyle(
+            fontSize: 14,
+            color: value.isNotEmpty
+                ? (isDarkMode ? Colors.white : const Color(0xFF0F172A))
+                : Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommuneDropdown() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    if (_loadingTerritories) {
+      return const LinearProgressIndicator(color: Color(0xFF10B981));
+    }
+    final selectedVal = _communesList.any((c) => (c['formatted_id']?.toString() ?? c['id']?.toString()) == formData.communeId)
+        ? formData.communeId
+        : (_communesList.isNotEmpty ? (_communesList.first['formatted_id']?.toString() ?? _communesList.first['id']?.toString()) : null);
+
+    return DropdownButtonFormField<String>(
+      initialValue: selectedVal,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: "Commune *",
+        prefixIcon: const Icon(Icons.location_city_rounded, color: Color(0xFF10B981)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      ),
+      items: _communesList.map<DropdownMenuItem<String>>((c) {
+        final id = c['formatted_id']?.toString() ?? c['id']?.toString() ?? '';
+        final name = c['commune_name'] ?? c['name'] ?? c['nom'] ?? id;
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Text(name, overflow: TextOverflow.ellipsis),
+        );
+      }).toList(),
+      onChanged: (val) {
+        if (val != null) _handleInputChange('commune_id', val);
+      },
     );
   }
 }

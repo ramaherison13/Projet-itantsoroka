@@ -160,11 +160,21 @@ class _SoumissionActeState extends State<SoumissionActe> {
   // Pièces jointes
   List<PieceJointe> _piecesJointes = [];
 
+  // Contrôleurs
+  late TextEditingController _auteurController;
+
   @override
   void initState() {
     super.initState();
+    _auteurController = TextEditingController();
     _fetchTypes();
     _fetchDistricts();
+  }
+
+  @override
+  void dispose() {
+    _auteurController.dispose();
+    super.dispose();
   }
 
   Future<String?> _getToken() async {
@@ -205,7 +215,7 @@ class _SoumissionActeState extends State<SoumissionActe> {
       
       // Utilisation du service territoire ou route équivalente sur baseUrl
       final res = await http.get(
-        Uri.parse('https://gateway.tsirylab.com/serviceterritoire-v2/districts'),
+        Uri.parse('${widget.baseUrl}/districts'),
         headers: {'Content-Type': 'application/json', if (token != null) 'Authorization': 'Bearer $token'},
       );
 
@@ -253,7 +263,7 @@ class _SoumissionActeState extends State<SoumissionActe> {
       setState(() => _loadingCommunes = true);
       final token = await _getToken();
       final res = await http.get(
-        Uri.parse('https://gateway.tsirylab.com/serviceterritoire-v2/communes/district/$selectedDistrictId'),
+        Uri.parse('${widget.baseUrl}/communes/district/$selectedDistrictId'),
         headers: {'Content-Type': 'application/json', if (token != null) 'Authorization': 'Bearer $token'},
       );
 
@@ -421,6 +431,7 @@ class _SoumissionActeState extends State<SoumissionActe> {
   @override
   Widget build(BuildContext context) {
     final userName = widget.currentUser['user_pseudo'] ?? widget.currentUser['nom'] ?? 'Utilisateur inconnu';
+    _auteurController.text = userName;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -477,7 +488,7 @@ class _SoumissionActeState extends State<SoumissionActe> {
                                       const Text("Auteur *", style: TextStyle(fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 8),
                                       TextField(
-                                        controller: TextEditingController(text: userName),
+                                        controller: _auteurController,
                                         readOnly: true,
                                         decoration: InputDecoration(
                                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),

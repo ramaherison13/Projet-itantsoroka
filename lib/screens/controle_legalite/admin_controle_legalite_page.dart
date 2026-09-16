@@ -523,38 +523,41 @@ class _ActListViewState extends State<ActListView> {
                           separatorBuilder: (context, index) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final acte = _actes[index];
-                            return ListTile(
-                              title: Text(acte.titre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  Text("Commune : ${acte.communeName ?? 'N/A'} | District : ${acte.districtName ?? 'N/A'}"),
-                                  Text("Types : ${acte.typeNames.join(', ')}", style: const TextStyle(color: Colors.green, fontSize: 12)),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildBadgeStatus(acte.statut),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.visibility, color: Colors.blue),
-                                    onPressed: () => widget.onViewDetails(acte.id.toString()),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.check, color: Colors.green),
-                                    onPressed: () => _updateStatut(acte.id, 'accepte'),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, color: Colors.orange),
-                                    onPressed: () => _updateStatut(acte.id, 'rejete'),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteActe(acte.id),
-                                  ),
-                                ],
+                            return Material(
+                              color: Colors.transparent,
+                              child: ListTile(
+                                title: Text(acte.titre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text("Commune : ${acte.communeName ?? 'N/A'} | District : ${acte.districtName ?? 'N/A'}"),
+                                    Text("Types : ${acte.typeNames.join(', ')}", style: const TextStyle(color: Colors.green, fontSize: 12)),
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildBadgeStatus(acte.statut),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.visibility, color: Colors.blue),
+                                      onPressed: () => widget.onViewDetails(acte.id.toString()),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.check, color: Colors.green),
+                                      onPressed: () => _updateStatut(acte.id, 'accepte'),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.orange),
+                                      onPressed: () => _updateStatut(acte.id, 'refuse'),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () => _deleteActe(acte.id),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },

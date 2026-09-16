@@ -32,6 +32,14 @@ class _FloatingChatBubbleWidgetState extends State<FloatingChatBubbleWidget> {
     }
 
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
+    final bool isTablet = MediaQuery.of(context).size.width < 960;
+    final double modalWidth = isMobile
+        ? MediaQuery.of(context).size.width * 0.94
+        : (isTablet ? 650.0 : 850.0);
+    final double modalHeight = isMobile
+        ? MediaQuery.of(context).size.height * 0.82
+        : 600.0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -43,8 +51,9 @@ class _FloatingChatBubbleWidgetState extends State<FloatingChatBubbleWidget> {
             elevation: 24,
             borderRadius: BorderRadius.circular(16),
             child: Container(
-              width: 900,
-              height: 600,
+              width: modalWidth,
+              height: modalHeight,
+              constraints: const BoxConstraints(maxWidth: 900, maxHeight: 720),
               decoration: BoxDecoration(
                 color: isDarkMode ? Colors.grey.shade900 : Colors.white,
                 borderRadius: BorderRadius.circular(16),

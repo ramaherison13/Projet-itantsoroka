@@ -36,34 +36,6 @@ class MyApp extends StatelessWidget {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
 
-    if (!authProvider.isInitialized) {
-      // Show a simple splash/loader while AuthProvider restores session
-      return MaterialApp(
-        title: 'Itantsoroka',
-        debugShowCheckedModeBanner: false,
-        theme: themeProvider.themeMode == ThemeMode.dark ? ThemeData(brightness: Brightness.dark) : ThemeData(brightness: Brightness.light),
-        home: const Scaffold(
-          backgroundColor: Color(0xFF0F172A),
-          body: Center(
-            child: SizedBox(
-              width: 220,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.public, size: 64, color: Color(0xFF0DBA00)),
-                  SizedBox(height: 16),
-                  CircularProgressIndicator(color: Color(0xFF0DBA00)),
-                  SizedBox(height: 12),
-                  Text('Chargement...', style: TextStyle(color: Colors.white70)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Auth is initialized — render the router app
     return MaterialApp.router(
       title: 'Itantsoroka',
       debugShowCheckedModeBanner: false,
@@ -108,6 +80,29 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: AppRouter.router,
+      builder: (context, child) {
+        if (!authProvider.isInitialized) {
+          return Scaffold(
+            backgroundColor: themeProvider.themeMode == ThemeMode.dark ? const Color(0xFF0F172A) : const Color(0xFFF9FAFB),
+            body: const Center(
+              child: SizedBox(
+                width: 220,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.public, size: 64, color: Color(0xFF0DBA00)),
+                    SizedBox(height: 16),
+                    CircularProgressIndicator(color: Color(0xFF0DBA00)),
+                    SizedBox(height: 12),
+                    Text('Chargement...', style: TextStyle(color: Colors.white70)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        return child ?? const SizedBox.shrink();
+      },
     );
   }
 }

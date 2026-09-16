@@ -180,7 +180,7 @@ class ActsTableWidget extends StatelessWidget {
                             names = typeNames.map((e) => e.toString()).toList();
                           } else if (typeIds != null && typeIds.isNotEmpty && typesActes != null) {
                             for (var tId in typeIds) {
-                              final found = typesActes!.firstWhere((t) => t['id'] == tId, orElse: () => null);
+                              final found = typesActes!.cast<Map<String, dynamic>?>().firstWhere((t) => t != null && t['id'] == tId, orElse: () => null);
                               if (found != null && found['nom'] != null) {
                                 names.add(found['nom'].toString());
                               }

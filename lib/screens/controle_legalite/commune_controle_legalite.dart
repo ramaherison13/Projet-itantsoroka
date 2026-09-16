@@ -603,34 +603,37 @@ class _CommuneControleLegaliteState extends State<CommuneControleLegalite> {
                               separatorBuilder: (context, index) => const Divider(height: 1),
                               itemBuilder: (context, index) {
                                 final acte = _actes[index];
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                  title: Text(acte.titre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 4),
-                                      Text("Type : ${acte.typeNames.join(', ')}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                      Text("Date : ${_formatDate(acte.dateCreation)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                    ],
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      StatusBadge(status: acte.statut),
-                                      const SizedBox(width: 12),
-                                      IconButton(
-                                        icon: const Icon(Icons.info_outline, color: Colors.green),
-                                        onPressed: () => _handleViewDetails(acte.id),
-                                        tooltip: "Voir les informations",
-                                      ),
-                                      if (acte.fichierUrl != null)
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                    title: Text(acte.titre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 4),
+                                        Text("Type : ${acte.typeNames.join(', ')}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                        Text("Date : ${_formatDate(acte.dateCreation)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                      ],
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        StatusBadge(status: acte.statut),
+                                        const SizedBox(width: 12),
                                         IconButton(
-                                          icon: const Icon(Icons.download, color: Colors.blue),
-                                          onPressed: () => _openFile(acte.fichierUrl!),
-                                          tooltip: "Télécharger",
+                                          icon: const Icon(Icons.info_outline, color: Colors.green),
+                                          onPressed: () => _handleViewDetails(acte.id),
+                                          tooltip: "Voir les informations",
                                         ),
-                                    ],
+                                        if (acte.fichierUrl != null)
+                                          IconButton(
+                                            icon: const Icon(Icons.download, color: Colors.blue),
+                                            onPressed: () => _openFile(acte.fichierUrl!),
+                                            tooltip: "Télécharger le fichier",
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 );
                               },

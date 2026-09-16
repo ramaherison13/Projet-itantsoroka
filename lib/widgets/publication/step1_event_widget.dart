@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/territory_service.dart';
 
 class EventTypeModel {
   final String id;
@@ -89,14 +90,25 @@ class _Step1EventWidgetState extends State<Step1EventWidget> {
 
   Future<void> _fetchCommunes() async {
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      setState(() {
-        _communes = [
-          CommuneModel(id: 'c1', name: 'Analakely'),
-          CommuneModel(id: 'c2', name: 'Isoraka'),
-        ];
-        _loadingCommunes = false;
-      });
+      final list = await TerritoryService.getCommunesBasic();
+      if (list != null && list.isNotEmpty) {
+        setState(() {
+          _communes = list.map((c) {
+            final id = c['formatted_id']?.toString() ?? c['id']?.toString() ?? '';
+            final name = c['commune_name'] ?? c['name'] ?? c['nom'] ?? id;
+            return CommuneModel(id: id, name: name);
+          }).toList();
+          _loadingCommunes = false;
+        });
+      } else {
+        setState(() {
+          _communes = [
+            CommuneModel(id: 'c1', name: 'Analakely'),
+            CommuneModel(id: 'c2', name: 'Isoraka'),
+          ];
+          _loadingCommunes = false;
+        });
+      }
     } catch (e) {
       setState(() => _loadingCommunes = false);
     }
@@ -104,14 +116,26 @@ class _Step1EventWidgetState extends State<Step1EventWidget> {
 
   Future<void> _fetchDistricts() async {
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      setState(() {
-        _districts = [
-          DistrictModel(formattedId: 'd1', districtId: '1', name: 'Antananarivo Renivohitra'),
-          DistrictModel(formattedId: 'd2', districtId: '2', name: 'Atsimondrano'),
-        ];
-        _loadingDistricts = false;
-      });
+      final list = await TerritoryService.getDistrictsBasic();
+      if (list != null && list.isNotEmpty) {
+        setState(() {
+          _districts = list.map((d) {
+            final fId = d['formatted_id']?.toString() ?? d['id']?.toString() ?? '';
+            final dId = d['district_id']?.toString() ?? d['id']?.toString() ?? '';
+            final name = d['district_name'] ?? d['name'] ?? d['nom'] ?? fId;
+            return DistrictModel(formattedId: fId, districtId: dId, name: name);
+          }).toList();
+          _loadingDistricts = false;
+        });
+      } else {
+        setState(() {
+          _districts = [
+            DistrictModel(formattedId: 'd1', districtId: '1', name: 'Antananarivo Renivohitra'),
+            DistrictModel(formattedId: 'd2', districtId: '2', name: 'Atsimondrano'),
+          ];
+          _loadingDistricts = false;
+        });
+      }
     } catch (e) {
       setState(() => _loadingDistricts = false);
     }

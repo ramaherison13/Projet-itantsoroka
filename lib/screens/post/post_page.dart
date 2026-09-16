@@ -78,12 +78,22 @@ class PostPageWidget extends StatefulWidget {
   final String baseUrl;
   final Future<List<TerritoryModel>> Function() getCommunesBasic;
   final Future<List<TerritoryModel>> Function() getDistrictsBasic;
+  /// Pré-filtre par district (formatted_id) venant de la monographie
+  final String? initialDistrictId;
+  /// Pré-filtre par commune (formatted_id) venant de la monographie
+  final String? initialCommuneId;
+  final String? initialDistrictName;
+  final String? initialCommuneName;
 
   const PostPageWidget({
     super.key,
     required this.baseUrl,
     required this.getCommunesBasic,
     required this.getDistrictsBasic,
+    this.initialDistrictId,
+    this.initialCommuneId,
+    this.initialDistrictName,
+    this.initialCommuneName,
   });
 
   @override
@@ -135,6 +145,13 @@ class _PostPageWidgetState extends State<PostPageWidget>
     );
     _fadeIn = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _animCtrl.forward();
+
+    // Pré-appliquer le filtre territoire depuis la monographie
+    if (widget.initialDistrictId != null && widget.initialDistrictId!.isNotEmpty) {
+      selectedDistrict = widget.initialDistrictId!;
+    } else if (widget.initialCommuneId != null && widget.initialCommuneId!.isNotEmpty) {
+      selectedCommune = widget.initialCommuneId!;
+    }
 
     _fetchFilterData();
     _fetchEvents();

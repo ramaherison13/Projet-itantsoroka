@@ -156,46 +156,67 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> login(String payloadString) async {
     try {
-      final data = jsonDecode(payloadString);
-      final token = jsonEncode(data['data']);
-      _accessToken = token;
-      _isActivated = data['isActivated'] ?? false;
+      // Miroir de authSlice.ts ligne 53-78
+      // Le payload est JSON.stringify({ data: responseData, isActivated: bool })
+      // où responseData peut être le JWT brut (string) ou un objet { access_token, ... }
+      dynamic rawData;
+      try {
+        rawData = jsonDecode(payloadString);
+      } catch (_) {
+        rawData = {'data': payloadString};
+      }
 
+      // Extraire le JWT brut — miroir de authSlice.ts ligne 61 :
+      // const token = typeof rawData.data === "string" ? rawData.data
+      //             : (rawData.data?.access_token || rawData.data?.token || action.payload);
+      String? token;
+      final dataField = rawData['data'];
+      if (dataField is String && dataField.trim().isNotEmpty) {
+        // data est déjà un JWT brut
+        token = dataField.trim();
+      } else if (dataField is Map) {
+        // data est un objet — chercher access_token ou token
+        token = dataField['access_token']?.toString() ??
+                dataField['token']?.toString() ??
+                dataField['jwt']?.toString();
+      } else {
+        // Fallback : peut-être que rawData lui-même est le token ou contient access_token
+        token = rawData['access_token']?.toString() ??
+                rawData['token']?.toString();
+      }
+
+      if (token == null || token.trim().isEmpty) {
+        debugPrint('AuthProvider.login : impossible d\'extraire le JWT depuis : $payloadString');
+        return;
+      }
+      token = token.trim();
+
+      _isActivated = (rawData['isActivated'] as bool?) ?? true;
+
+      // Stocker le JWT brut (et non un JSON wrappé)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('access_token', token);
       await prefs.setBool('isActivated', _isActivated);
+      _accessToken = token;
 
+      // Décoder le payload JWT pour peupler _user
       try {
-        String resolvedToken = token;
-        try {
-          final parsed = jsonDecode(token);
-          if (parsed is String && parsed.trim().isNotEmpty) {
-            resolvedToken = parsed.trim();
-          } else if (parsed is Map) {
-            final candidate = parsed['access_token'] ?? parsed['token'];
-            if (candidate is String && candidate.trim().isNotEmpty) {
-              resolvedToken = candidate.trim();
-            }
-          }
-        } catch (_) {}
-
-        if (resolvedToken.isNotEmpty) {
-          final parts = resolvedToken.split('.');
-          if (parts.length > 1) {
-            final normalized = base64Url.normalize(parts[1]);
-            final payload = jsonDecode(utf8.decode(base64Url.decode(normalized)));
-            _user = TokenPayload.fromJson(Map<String, dynamic>.from(payload));
-          }
+        final parts = token.split('.');
+        if (parts.length > 1) {
+          final normalized = base64Url.normalize(parts[1]);
+          final payload = jsonDecode(utf8.decode(base64Url.decode(normalized)));
+          _user = TokenPayload.fromJson(Map<String, dynamic>.from(payload));
         }
         _isAuthenticated = true;
       } catch (e) {
-        debugPrint("AuthProvider: error parsing JWT during login: $e");
-        _isAuthenticated = true;
+        debugPrint('AuthProvider.login : erreur d\'analyse du JWT : $e');
+        _isAuthenticated = true; // auth acceptée même si le décodage échoue
       }
+
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      debugPrint("Erreur login : $e");
+      debugPrint('Erreur login : $e');
     }
   }
 

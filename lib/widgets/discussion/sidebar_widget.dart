@@ -80,8 +80,7 @@ class _SidebarWidgetState extends State<SidebarWidget> {
     return Stack(
       children: [
         Container(
-          width: MediaQuery.of(context).size.width / 3,
-          constraints: const BoxConstraints(minWidth: 280),
+          width: double.infinity,
           decoration: BoxDecoration(
             color: isDarkMode ? Colors.grey.shade900 : Colors.white,
             border: Border(
@@ -94,41 +93,45 @@ class _SidebarWidgetState extends State<SidebarWidget> {
             children: [
               // Header & Search section
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        ShaderMask(
-                          shaderCallback: (bounds) => LinearGradient(
-                            colors: [Colors.grey, Colors.teal],
-                          ).createShader(bounds),
-                          child: Text(
-                            "Discussions",
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: isDarkMode ? Colors.white : Colors.grey.shade900,
+                        Flexible(
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [Colors.grey, Colors.teal],
+                            ).createShader(bounds),
+                            child: Text(
+                              "Discussions",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: isDarkMode ? Colors.white : Colors.grey.shade900,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: () => setState(() => _isModalOpen = true),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             elevation: 2,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          icon: const Icon(Icons.add, size: 18),
+                          icon: const Icon(Icons.add, size: 16),
                           label: const Text(
                             "Groupe",
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],

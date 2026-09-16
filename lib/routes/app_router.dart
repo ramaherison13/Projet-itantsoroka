@@ -24,6 +24,8 @@ import '../screens/publications/publish_page_principal_screen.dart';
 import '../screens/publications/publish_actu_screen.dart';
 import '../screens/publications/publish_event_screen.dart';
 import '../screens/publications/publish_project_screen.dart';
+import '../screens/publications/admin_monographie_screen.dart';
+import '../screens/publications/edit_publication_screen.dart';
 
 // Écrans - Administration & Gestion
 import '../screens/administration/admin_dashboard_screen.dart';
@@ -119,27 +121,48 @@ class AppRouter {
           ),
           GoRoute(
             path: '/actualites',
-            builder: (context, state) => PostPageWidget(
-              baseUrl: "https://gateway.tsirylab.com",
-              getCommunesBasic: () async {
-                final List<dynamic>? list =
-                    await TerritoryService.getCommunesBasic();
-                return (list ?? [])
-                    .map((c) => TerritoryModel.fromJson(c))
-                    .toList();
-              },
-              getDistrictsBasic: () async {
-                final List<dynamic>? list =
-                    await TerritoryService.getDistrictsBasic();
-                return (list ?? [])
-                    .map((d) => TerritoryModel.fromJson(d))
-                    .toList();
-              },
-            ),
+            builder: (context, state) {
+              final districtId = state.uri.queryParameters['districtId'];
+              final communeId = state.uri.queryParameters['communeId'];
+              final districtName = state.uri.queryParameters['districtName'];
+              final communeName = state.uri.queryParameters['communeName'];
+              return PostPageWidget(
+                baseUrl: "https://gateway.tsirylab.com",
+                getCommunesBasic: () async {
+                  final List<dynamic>? list =
+                      await TerritoryService.getCommunesBasic();
+                  return (list ?? [])
+                      .map((c) => TerritoryModel.fromJson(c))
+                      .toList();
+                },
+                getDistrictsBasic: () async {
+                  final List<dynamic>? list =
+                      await TerritoryService.getDistrictsBasic();
+                  return (list ?? [])
+                      .map((d) => TerritoryModel.fromJson(d))
+                      .toList();
+                },
+                initialDistrictId: districtId,
+                initialCommuneId: communeId,
+                initialDistrictName: districtName,
+                initialCommuneName: communeName,
+              );
+            },
           ),
           GoRoute(
             path: '/officeprojet',
-            builder: (context, state) => const OfficeProjetScreen(),
+            builder: (context, state) {
+              final communeId = state.uri.queryParameters['communeId'];
+              final districtId = state.uri.queryParameters['districtId'];
+              final territoireName = state.uri.queryParameters['districtName'] ??
+                  state.uri.queryParameters['communeName'] ??
+                  state.uri.queryParameters['territoireName'];
+              return OfficeProjetScreen(
+                initialCommuneFilter: communeId,
+                initialDistrictId: districtId,
+                initialTerritoireName: territoireName,
+              );
+            },
           ),
           GoRoute(
             path: '/monographie',
@@ -193,8 +216,19 @@ class AppRouter {
           ),
           GoRoute(
             path: '/document',
-            builder: (context, state) =>
-                TousDocumentsWidget(baseUrl: "https://gateway.tsirylab.com"),
+            builder: (context, state) {
+              final districtId = state.uri.queryParameters['districtId'];
+              final communeId = state.uri.queryParameters['communeId'];
+              final territoireName = state.uri.queryParameters['districtName'] ??
+                  state.uri.queryParameters['communeName'] ??
+                  state.uri.queryParameters['territoireName'];
+              return TousDocumentsWidget(
+                baseUrl: "https://gateway.tsirylab.com",
+                initialDistrictId: districtId,
+                initialCommuneId: communeId,
+                initialTerritoireName: territoireName,
+              );
+            },
           ),
           GoRoute(
             path: '/theme/:themeId',
@@ -217,12 +251,41 @@ class AppRouter {
           ),
           GoRoute(
             path: '/offres-appui',
-            builder: (context, state) => OffreStdPage(
-              baseUrl: "https://gateway.tsirylab.com",
-              currentUser: {},
-            ),
+            builder: (context, state) {
+              final districtId = state.uri.queryParameters['districtId'];
+              final communeId = state.uri.queryParameters['communeId'];
+              return OffreStdPage(
+                baseUrl: "https://gateway.tsirylab.com/serviceaffiliation",
+                currentUser: const {},
+                initialDistrictId: districtId,
+                initialCommuneId: communeId,
+              );
+            },
+          ),
+          // Aliases de redirection pour rétrocompatibilité
+          GoRoute(
+            path: '/publication',
+            redirect: (context, state) => '/actualites',
+          ),
+          GoRoute(
+            path: '/office-projet',
+            redirect: (context, state) => '/officeprojet',
+          ),
+          GoRoute(
+            path: '/centre-ressource',
+            redirect: (context, state) => '/document',
           ),
         ],
+      ),
+
+      // Route callback SSO Keycloak (/callback?code=xxx)
+      // Keycloak redirige ici après connexion réussie sur le portail IAHO
+      GoRoute(
+        path: '/callback',
+        builder: (context, state) {
+          final code = state.uri.queryParameters['code'];
+          return LoginScreen(ssoCode: code);
+        },
       ),
 
       // Routes d'authentification
@@ -430,6 +493,20 @@ class AppRouter {
           GoRoute(
             path: '/itantsorika/publier',
             builder: (context, state) => const PublishPagePrincipalScreen(),
+            routes: [
+              GoRoute(
+                path: 'projet',
+                builder: (context, state) => const PublishProjectScreen(),
+              ),
+              GoRoute(
+                path: 'evenement',
+                builder: (context, state) => const PublishEventScreen(),
+              ),
+              GoRoute(
+                path: 'actualite',
+                builder: (context, state) => const PublishActuScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/itantsorika/publier/projet',
@@ -456,7 +533,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/itantsorika/monographie',
-            builder: (context, state) => const MonographieScreen(),
+            builder: (context, state) => const AdminMonographieScreen(),
           ),
           GoRoute(
             path: '/itantsorika/reunion',
@@ -467,10 +544,11 @@ class AppRouter {
           ),
           GoRoute(
             path: '/itantsorika/editPublication/:type/:id',
-            builder: (context, state) => const ComingSoonScreen(
-              title: 'Modifier une publication',
-              subtitle: 'L’édition des publications sera bientôt disponible.',
-            ),
+            builder: (context, state) {
+              final type = state.pathParameters['type'] ?? 'event';
+              final id = state.pathParameters['id'] ?? '';
+              return EditPublicationScreen(type: type, id: id);
+            },
           ),
           GoRoute(
             path: '/itantsorika/gestion-ressource',

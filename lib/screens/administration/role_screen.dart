@@ -17,8 +17,12 @@ class RoleScreen extends StatefulWidget {
 
 class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
   List<dynamic> roles = [];
+  List<dynamic> _filteredRoles = [];
   bool loading = false;
   Map<String, dynamic>? selectedRole;
+  String _searchQuery = '';
+  String _selectedApp = 'Toutes';
+  final TextEditingController _searchCtrl = TextEditingController();
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
@@ -37,6 +41,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _fadeCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -44,23 +49,37 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
     setState(() => loading = true);
     _fadeCtrl.reset();
     try {
+      // getAllRolesWithPermission retourne maintenant directement une List
       final res = await RoleService.getAllRolesWithPermission();
       if (res != null) {
-        final List fetched = res is List
-            ? res
-            : (res['data'] ?? res['roles'] ?? res['content'] ?? []);
+        List fetched = [];
+        if (res is List) {
+          fetched = res;
+        } else if (res is Map) {
+          fetched = res['data'] ?? res['roles'] ?? res['content'] ?? [];
+        }
         if (fetched.isNotEmpty) {
-          setState(() => roles = fetched);
+          setState(() {
+            roles = List<Map<String, dynamic>>.from(
+                fetched.whereType<Map<String, dynamic>>());
+            _applyFilters();
+          });
           _fadeCtrl.forward();
           return;
         }
       }
-      final response =
-          await http.get(Uri.parse('${ApiConstants.serviceAuth}/roles'));
+      // Fallback: appel direct à l'API avec limit=200
+      final response = await http.get(
+          Uri.parse('${ApiConstants.serviceAuth}/roles?limit=200'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        final List raw = data is List
+            ? data
+            : (data['data'] ?? data['roles'] ?? []);
         setState(() {
-          roles = data is List ? data : data['data'] ?? data['roles'] ?? [];
+          roles = List<Map<String, dynamic>>.from(
+              raw.whereType<Map<String, dynamic>>());
+          _applyFilters();
         });
         _fadeCtrl.forward();
       }
@@ -69,6 +88,31 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  // Applique la recherche et le filtre par application
+  void _applyFilters() {
+    final q = _searchQuery.toLowerCase();
+    setState(() {
+      _filteredRoles = roles.where((r) {
+        final name = (r['role_name'] ?? r['name'] ?? '').toLowerCase();
+        final appName = (r['application']?['app_name'] ?? '').toLowerCase();
+        final matchSearch = q.isEmpty || name.contains(q) || appName.contains(q);
+        final matchApp = _selectedApp == 'Toutes' ||
+            (r['application']?['app_name'] ?? '') == _selectedApp;
+        return matchSearch && matchApp;
+      }).toList();
+    });
+  }
+
+  // Retourne la liste unique des noms d'applications
+  List<String> get _appNames {
+    final apps = <String>{};
+    for (final r in roles) {
+      final name = r['application']?['app_name'];
+      if (name != null && name.toString().isNotEmpty) apps.add(name.toString());
+    }
+    return ['Toutes', ...apps.toList()..sort()];
   }
 
   void _openCreateModal() {
@@ -379,6 +423,88 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
             ],
           ),
 
+          // Barre de recherche & Filtre d'application
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // Recherche
+              Expanded(
+                child: Container(
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isDark ? AdminTheme.surface2Dark : const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(AdminTheme.radiusSm),
+                    border: Border.all(
+                      color: isDark ? AdminTheme.borderDark : AdminTheme.borderLight,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AdminTheme.textPrimaryDark : AdminTheme.textPrimary,
+                    ),
+                    onChanged: (v) {
+                      _searchQuery = v;
+                      _applyFilters();
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher un rôle ou une app...',
+                      hintStyle: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AdminTheme.textMutedDark : AdminTheme.textMuted,
+                      ),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 16, color: Color(0xFF9CA3AF)),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Filtre par application
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? AdminTheme.surface2Dark : const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(AdminTheme.radiusSm),
+                  border: Border.all(
+                    color: isDark ? AdminTheme.borderDark : AdminTheme.borderLight,
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedApp,
+                    isDense: true,
+                    dropdownColor: isDark ? AdminTheme.surfaceDark : Colors.white,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AdminTheme.textPrimaryDark : AdminTheme.textPrimary,
+                    ),
+                    icon: const Icon(Icons.filter_list_rounded, size: 16, color: Color(0xFF6B7280)),
+                    items: _appNames.map((app) {
+                      return DropdownMenuItem<String>(
+                        value: app,
+                        child: Text(app == 'Toutes' ? 'Toutes les apps' : app),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _selectedApp = val;
+                          _applyFilters();
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+
           // Actions contextuelles (rôle sélectionné)
           if (hasSelectedRole) ...[
             const SizedBox(height: 10),
@@ -455,6 +581,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
 
   Widget _buildMobileList(
       bool isDark, dynamic currentSelectedId, bool hasSelectedRole) {
+    final list = _filteredRoles;
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(
         AdminTheme.horizontalPadding(context),
@@ -462,10 +589,10 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
         AdminTheme.horizontalPadding(context),
         hasSelectedRole ? 120 : 100,
       ),
-      itemCount: roles.length,
+      itemCount: list.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
-        final r = roles[index];
+        final r = list[index];
         final rowId = r['role_id'] ?? r['id'];
         final isSelected = currentSelectedId != null &&
             rowId != null &&
@@ -473,6 +600,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
         final permCount = (r['rolePermissions'] as List?)?.length ?? 0;
         final userCount = (r['appUserRoles'] as List?)?.length ?? 0;
         final roleName = r['role_name'] ?? r['name'] ?? 'Rôle';
+        final appName = r['application']?['app_name'] ?? '';
 
         return GestureDetector(
           onTap: () =>
@@ -545,7 +673,10 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
+                        runSpacing: 4,
                         children: [
+                          if (appName.isNotEmpty)
+                            AdminTheme.badge(appName, AdminTheme.primary),
                           AdminTheme.badge('$permCount perm.', AdminTheme.purple),
                           AdminTheme.badge(
                             '$userCount user${userCount != 1 ? 's' : ''}',
@@ -588,6 +719,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
 
   Widget _buildDesktopTable(
       bool isDark, dynamic currentSelectedId, bool hasSelectedRole) {
+    final list = _filteredRoles;
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
         AdminTheme.horizontalPadding(context),
@@ -616,6 +748,8 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
                 const Expanded(
                     flex: 3, child: _TH('Rôle')),
                 const Expanded(
+                    flex: 2, child: _TH('Application')),
+                const Expanded(
                     flex: 2, child: _TH('Permissions')),
                 const Expanded(
                     flex: 2, child: _TH('Utilisateurs')),
@@ -625,7 +759,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
           ),
 
           // Lignes
-          ...roles.map((r) {
+          ...list.map((r) {
             final rowId = r['role_id'] ?? r['id'];
             final isSelected = currentSelectedId != null &&
                 rowId != null &&
@@ -633,9 +767,11 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
             final permCount = (r['rolePermissions'] as List?)?.length ?? 0;
             final userCount = (r['appUserRoles'] as List?)?.length ?? 0;
             final roleName = r['role_name'] ?? r['name'] ?? '';
+            final appName = r['application']?['app_name'] ?? '-';
 
             return _RoleTableRow(
               roleName: roleName,
+              appName: appName,
               permCount: permCount,
               userCount: userCount,
               isSelected: isSelected,
@@ -690,6 +826,7 @@ class _RoleScreenState extends State<RoleScreen> with TickerProviderStateMixin {
 
 class _RoleTableRow extends StatefulWidget {
   final String roleName;
+  final String appName;
   final int permCount;
   final int userCount;
   final bool isSelected;
@@ -701,6 +838,7 @@ class _RoleTableRow extends StatefulWidget {
 
   const _RoleTableRow({
     required this.roleName,
+    required this.appName,
     required this.permCount,
     required this.userCount,
     required this.isSelected,
@@ -789,6 +927,16 @@ class _RoleTableRowState extends State<_RoleTableRow> {
                         ? AdminTheme.textPrimaryDark
                         : AdminTheme.textPrimary,
                   ),
+                ),
+              ),
+
+              // Application
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AdminTheme.badge(
+                      widget.appName, AdminTheme.primary),
                 ),
               ),
 

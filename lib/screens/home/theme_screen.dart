@@ -13,7 +13,7 @@ class ThemeScreen extends StatefulWidget {
 }
 
 class _ThemeScreenState extends State<ThemeScreen> {
-  final String apiUrl = "https://gateway.tsirylab.com/servicetheme/themes";
+  final String apiUrl = "https://gateway.tsirylab.com";
 
   Map<String, dynamic>? theme;
   List<dynamic> documents = [];
@@ -46,8 +46,8 @@ class _ThemeScreenState extends State<ThemeScreen> {
       final response = await http.get(Uri.parse('$apiUrl/servicetheme/themes'));
       if (response.statusCode == 200) {
         List<dynamic> themes = json.decode(response.body);
-        final foundTheme = themes.firstWhere(
-          (t) => t['theme_id'].toString() == widget.themeId,
+        final foundTheme = themes.cast<Map<String, dynamic>?>().firstWhere(
+          (t) => t != null && t['theme_id'].toString() == widget.themeId,
           orElse: () => null,
         );
         if (foundTheme != null) {

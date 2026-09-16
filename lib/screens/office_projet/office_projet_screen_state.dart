@@ -4,7 +4,18 @@ import '../../services/territory_service.dart';
 import '../../l10n/app_localization.dart';
 
 class OfficeProjetScreen extends StatefulWidget {
-  const OfficeProjetScreen({super.key});
+  /// Pré-filtre par commune (formatted_id) venant de la monographie
+  final String? initialCommuneFilter;
+  /// Pré-filtre par district (formatted_id) venant de la monographie  
+  final String? initialDistrictId;
+  final String? initialTerritoireName;
+
+  const OfficeProjetScreen({
+    super.key,
+    this.initialCommuneFilter,
+    this.initialDistrictId,
+    this.initialTerritoireName,
+  });
 
   @override
   State<OfficeProjetScreen> createState() => _OfficeProjetScreenState();
@@ -35,14 +46,18 @@ class _OfficeProjetScreenState extends State<OfficeProjetScreen> {
   @override
   void initState() {
     super.initState();
+    // Pré-appliquer le filtre territoire (commune ou district) depuis la monographie
+    if (widget.initialCommuneFilter != null && widget.initialCommuneFilter!.isNotEmpty) {
+      communeFilter = widget.initialCommuneFilter!;
+    } else if (widget.initialDistrictId != null && widget.initialDistrictId!.isNotEmpty) {
+      communeFilter = widget.initialDistrictId!;
+    }
     _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
-    await Future.wait([
-      _loadProjects(1),
-      _loadCommunes(),
-    ]);
+    _loadProjects(1);
+    _loadCommunes();
   }
 
   Future<void> _loadProjects(int page) async {
@@ -239,8 +254,34 @@ class _OfficeProjetScreenState extends State<OfficeProjetScreen> {
           descStr.contains(searchTerm) ||
           respStr.contains(searchTerm);
 
-      final comId = p['commune_id']?.toString() ?? p['commune']?.toString() ?? p['commune_name']?.toString() ?? '';
-      bool matchesCommune = communeFilter == "all" || comId == communeFilter || _getCommuneDisplayName(p) == communeFilter;
+      final comId = p['commune_id']?.toString() ??
+          p['commune']?.toString() ??
+          p['commune_name']?.toString() ??
+          p['district_id']?.toString() ??
+          p['district']?.toString() ??
+          p['location']?.toString() ??
+          '';
+
+      bool matchesCommune = communeFilter == "all";
+      if (!matchesCommune) {
+        if (comId == communeFilter || _getCommuneDisplayName(p) == communeFilter) {
+          matchesCommune = true;
+        } else if (comId.length >= 4 && communeFilter.length >= 4) {
+          final cleanCom = comId.replaceAll(RegExp(r'0+$'), '');
+          final cleanFilter = communeFilter.replaceAll(RegExp(r'0+$'), '');
+          if (cleanCom.isNotEmpty && cleanFilter.isNotEmpty && (cleanCom.startsWith(cleanFilter) || cleanFilter.startsWith(cleanCom))) {
+            matchesCommune = true;
+          }
+        }
+        if (!matchesCommune && widget.initialTerritoireName != null && widget.initialTerritoireName!.trim().isNotEmpty) {
+          final targetName = widget.initialTerritoireName!.trim().toLowerCase();
+          final projCommuneName = _getCommuneDisplayName(p).toLowerCase();
+          final projLoc = (p['location'] ?? p['district'] ?? p['district_name'] ?? p['commune_name'] ?? '').toString().toLowerCase();
+          if (projCommuneName.contains(targetName) || projLoc.contains(targetName)) {
+            matchesCommune = true;
+          }
+        }
+      }
 
       final partners = p['partenaire'] ?? p['partenaires'] ?? p['partner'];
       bool matchesPartenaire = partenaireFilter == "all";
@@ -367,7 +408,36 @@ class _OfficeProjetScreenState extends State<OfficeProjetScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                if (communeFilter != "all" || (widget.initialTerritoireName != null && widget.initialTerritoireName!.isNotEmpty))
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF098E00).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF098E00).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.filter_alt_rounded, size: 16, color: Color(0xFF098E00)),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Filtre actif : ${widget.initialTerritoireName ?? communeFilter}",
+                          style: const TextStyle(color: Color(0xFF098E00), fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              communeFilter = "all";
+                            });
+                          },
+                          child: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF098E00)),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // ── Barre de Filtres ─────────────────────────────────────────
                 Container(
@@ -901,9 +971,15 @@ class _OfficeProjetScreenState extends State<OfficeProjetScreen> {
   }
 
   Widget _buildCommuneDropdown(bool isDarkMode) {
+    final hasMatchingItem = communeFilter == "all" || communes.any((c) {
+      final id = c['formatted_id']?.toString() ?? c['id']?.toString() ?? c['name']?.toString() ?? '';
+      return id == communeFilter;
+    });
+    final dropdownValue = hasMatchingItem ? communeFilter : "all";
+
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      initialValue: communeFilter,
+      initialValue: dropdownValue,
       dropdownColor: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
       decoration: InputDecoration(
         filled: true,

@@ -22,7 +22,9 @@ class LanguageProvider with ChangeNotifier {
         _locale = const Locale('fr', 'FR');
       }
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("LanguageProvider: Erreur lors du chargement de la langue: $e");
+    }
   }
 
   Future<void> setLanguage(String langCode) async {
@@ -39,6 +41,8 @@ class LanguageProvider with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefKey, langCode);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("LanguageProvider: Erreur lors de la sauvegarde de la langue: $e");
+    }
   }
 }

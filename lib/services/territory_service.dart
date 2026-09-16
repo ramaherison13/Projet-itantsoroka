@@ -189,6 +189,14 @@ class TerritoryService {
     return _fetchTerritoryList('/communes/district/$districtFormattedId', "des communes du district $districtFormattedId");
   }
 
+  static Future<List<dynamic>?> getFokotanysByCommune(String communeFormattedId) async {
+    return _fetchTerritoryList(
+      '/fokotanys/commune/$communeFormattedId',
+      "des fokontany de la commune $communeFormattedId",
+      fallbackPath: '/fokontany/commune/$communeFormattedId',
+    );
+  }
+
   /// Retourne les comptages territoriaux [communesTotal, districtsTotal, regionsTotal]
   /// via 3 requêtes légères parallèles (limit=1), sans télécharger toutes les données.
   static Future<Map<String, int>> getTerritoryCountsOnly() async {

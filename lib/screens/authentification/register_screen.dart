@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:itantsoroka/constants/api_constants.dart';
 import 'package:itantsoroka/l10n/app_localization.dart';
+import 'package:itantsoroka/services/territory_service.dart';
 import 'package:itantsoroka/widgets/language_setting_widget.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   late TextEditingController _cinController;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _lastnameController = TextEditingController();
+  final TextEditingController _workController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cardLocationController = TextEditingController();
   final TextEditingController _cardDateController = TextEditingController();
@@ -36,6 +38,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   List<dynamic> communes = [];
   dynamic selectedCommune;
   dynamic selectedFokontany;
+  List<dynamic> communeFokotanys = [];
+  bool loadingFokotanys = false;
 
   XFile? citizenPhoto;
   Uint8List? photoBytes;
@@ -67,12 +71,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
     loadCommunes();
   }
 
+  @override
+  void dispose() {
+    _cinController.dispose();
+    _nameController.dispose();
+    _lastnameController.dispose();
+    _workController.dispose();
+    _addressController.dispose();
+    _cardLocationController.dispose();
+    _cardDateController.dispose();
+    _pseudoController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
   Future<void> loadCommunes() async {
     if (!mounted) return;
     setState(() => loadingPage = true);
 
-    // Essaie d'abord /communes/sans-form (sans pagination, pas de CORS 403),
-    // puis /communes/basic en fallback.
+    try {
+      final list = await TerritoryService.getAllCommunes();
+      if (list != null && list.isNotEmpty && mounted) {
+        setState(() {
+          communes = list;
+          loadingPage = false;
+        });
+        return;
+      }
+    } catch (_) {}
+
     final endpoints = [
       '${ApiConstants.serviceTerritoire}/communes/sans-form',
       '${ApiConstants.serviceTerritoire}/communes/basic?page=1&limit=1579',
@@ -101,18 +131,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
             }
             if (extracted.isNotEmpty) {
               if (mounted) setState(() => communes = extracted);
-              break; // Succès — on arrête la boucle
+              break;
             }
           }
         } catch (e) {
-          debugPrint('loadCommunes tentativ ${attempt + 1} pour $url: $e');
+          debugPrint('loadCommunes attempt ${attempt + 1} for $url: $e');
           if (attempt == 0) await Future.delayed(const Duration(milliseconds: 800));
         }
       }
       if (communes.isNotEmpty) break;
     }
 
-    // Si toujours vide, on utilise la liste de secours
     if (communes.isEmpty && mounted) _setFallbackCommunes();
 
     if (mounted) setState(() => loadingPage = false);
@@ -133,6 +162,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
         {'formatted_id': '110', 'commune_name': 'Antsiranana'},
       ];
     });
+  }
+
+  Future<void> _fetchFokotanysForCommune(String communeFormattedId) async {
+    setState(() {
+      loadingFokotanys = true;
+      communeFokotanys = [];
+    });
+
+    try {
+      final foks = await TerritoryService.getFokotanysByCommune(communeFormattedId);
+      if (mounted) {
+        setState(() {
+          communeFokotanys = foks ?? [];
+          loadingFokotanys = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          communeFokotanys = [];
+          loadingFokotanys = false;
+        });
+      }
+    }
   }
 
   Future<void> _pickImage() async {
@@ -170,34 +223,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final errRequis = context.tr('register.champ_requis');
 
-      if (_nameController.text.isEmpty) errors['citizen_name'] = errRequis;
-      if (_addressController.text.isEmpty) errors['citizen_adress'] = errRequis;
-      if (selectedCommune == null) errors['municipality_id'] = errRequis;
+      // Nom (citizen_name) - Required
+      if (_nameController.text.trim().isEmpty) {
+        errors['citizen_name'] = errRequis;
+      }
+
+      // Commune (municipality_id) - Required
+      if (selectedCommune == null) {
+        errors['municipality_id'] = errRequis;
+      }
+
+      // Fonction (citizen_work) - Required
+      if (_workController.text.trim().isEmpty) {
+        errors['citizen_work'] = errRequis;
+      }
+
+      // Fokontany (fokotany_id / fokotany_formatted_id) - Required
       if (selectedFokontany == null) {
         errors['fokotany_id'] = errRequis;
         errors['fokotany_formatted_id'] = errRequis;
       }
 
-      if (_cinController.text.length != 12 || !RegExp(r'^\d+$').hasMatch(_cinController.text)) {
+      // CIN (citizen_national_card_number) - Required 12 digits
+      final cinText = _cinController.text.trim();
+      if (cinText.length != 12 || !RegExp(r'^\d+$').hasMatch(cinText)) {
         errors['citizen_national_card_number'] = context.tr('register.err_cin_12_chiffres');
       }
 
-      if (_cardLocationController.text.isEmpty) errors['citizen_national_card_location'] = errRequis;
-      if (_cardDateController.text.isEmpty) errors['citizen_national_card_date'] = errRequis;
-
-      if (_emailController.text.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailController.text)) {
+      // Email (user_email) - Required
+      final emailText = _emailController.text.trim();
+      if (emailText.isEmpty || !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(emailText)) {
         errors['user_email'] = context.tr('register.err_email_invalide');
       }
 
-      if (_pseudoController.text.isEmpty) errors['user_pseudo'] = errRequis;
-
-      if (_phoneController.text.length != 10 || !RegExp(r'^\d+$').hasMatch(_phoneController.text)) {
-        errors['user_phone'] = context.tr('register.err_phone_10_chiffres');
+      // Password (user_password) - Required
+      if (_passwordController.text.isEmpty) {
+        errors['user_password'] = errRequis;
       }
 
-      if (_passwordController.text.isEmpty) errors['user_password'] = errRequis;
+      // Confirm Password - Required & must match
       if (_passwordController.text != _confirmPasswordController.text) {
         errors['confirm_password'] = context.tr('register.err_password_mismatch');
+      }
+
+      // Phone (user_phone) - Optional, but if typed must be 10 digits
+      final phoneText = _phoneController.text.trim();
+      if (phoneText.isNotEmpty && (phoneText.length != 10 || !RegExp(r'^\d+$').hasMatch(phoneText))) {
+        errors['user_phone'] = context.tr('register.err_phone_10_chiffres');
       }
     });
 
@@ -221,6 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'confirm_password': true,
         'user_phone': true,
         'municipality_id': true,
+        'citizen_work': true,
         'citizen_photo': true,
       };
     });
@@ -234,26 +307,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
       isLoading = true;
     });
 
-    // Capture translations before async
     final msgSucces = context.tr('register.succes');
     final msgErreur = context.tr('register.erreur_generique');
     final msgErreurInscription = context.tr('register.erreur_inscription');
 
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('${ApiConstants.serviceAuth}/users/register-with-citizen-short'));
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConstants.serviceAuth}/users/register-with-citizen-short'),
+      );
 
+      final communeId = selectedCommune?['formatted_id']?.toString() ?? selectedCommune?['municipality_id']?.toString() ?? selectedCommune?['id']?.toString() ?? '';
+      final fokontanyFormattedId = selectedFokontany?['formatted_id']?.toString() ?? selectedFokontany?['fokotany_formatted_id']?.toString() ?? selectedFokontany?['id']?.toString() ?? '';
+
+      // Required fields
       request.fields['citizen_name'] = _nameController.text.trim();
       request.fields['citizen_lastname'] = _lastnameController.text.trim();
       request.fields['citizen_national_card_number'] = _cinController.text.trim();
-      request.fields['citizen_adress'] = _addressController.text.trim();
-      request.fields['citizen_national_card_location'] = _cardLocationController.text.trim();
-      request.fields['citizen_national_card_date'] = _cardDateController.text.trim();
-      request.fields['fokotany_formatted_id'] = selectedFokontany?['fokotany_formatted_id'] ?? '';
-      request.fields['user_pseudo'] = _pseudoController.text.trim();
+      request.fields['fokotany_formatted_id'] = fokontanyFormattedId;
       request.fields['user_email'] = _emailController.text.trim();
       request.fields['user_password'] = _passwordController.text;
-      request.fields['user_phone'] = _phoneController.text.trim();
-      request.fields['municipality_id'] = selectedCommune?['formatted_id']?.toString() ?? selectedCommune?['municipality_id']?.toString() ?? '';
+      request.fields['municipality_id'] = communeId;
+      request.fields['citizen_work'] = _workController.text.trim();
+
+      // Optional fields
+      if (_addressController.text.trim().isNotEmpty) {
+        request.fields['citizen_adress'] = _addressController.text.trim();
+      }
+      if (_cardLocationController.text.trim().isNotEmpty) {
+        request.fields['citizen_national_card_location'] = _cardLocationController.text.trim();
+      }
+      if (_cardDateController.text.trim().isNotEmpty) {
+        request.fields['citizen_national_card_date'] = _cardDateController.text.trim();
+      }
+      if (_pseudoController.text.trim().isNotEmpty) {
+        request.fields['user_pseudo'] = _pseudoController.text.trim();
+      }
+      if (_phoneController.text.trim().isNotEmpty) {
+        request.fields['user_phone'] = _phoneController.text.trim();
+      }
 
       if (citizenPhoto != null && photoBytes != null) {
         request.files.add(
@@ -288,7 +380,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  /// Extrait le nom d'une commune depuis l'objet retourné par communes/basic
   String _communeName(dynamic c) {
     return c['commune_name'] ?? c['name'] ?? c['nom'] ?? '';
   }
@@ -426,7 +517,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // Main Logo DISPOSITIF DISTRICT
+                  // Logo DISPOSITIF DISTRICT
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                     decoration: BoxDecoration(
@@ -462,7 +553,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Partner Logos Pill Row
+                  // Partner Logos
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
@@ -484,7 +575,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Header Typography
+                  // Title & Subtitle
                   Column(
                     children: [
                       Text(
@@ -521,6 +612,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     builder: (context, constraints) {
                       bool isWide = constraints.maxWidth > 650;
 
+                      // Left Column: Prénom (optional), Nom (*), Commune (*), Fokontany (*), CIN (*)
                       Widget leftColumn = Column(
                         children: [
                           TextFormField(
@@ -529,42 +621,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: _customInputDecoration(
                               ctx: context,
                               labelText: context.tr('register.prenom'),
+                              isRequired: false,
                               icon: Icons.person_outline,
                               errorText: touched['citizen_lastname'] == true ? errors['citizen_lastname'] : null,
                             ),
                           ),
                           const SizedBox(height: 16),
+
                           TextFormField(
                             controller: _nameController,
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
                               labelText: context.tr('register.nom'),
+                              isRequired: true,
                               icon: Icons.badge_outlined,
                               errorText: touched['citizen_name'] == true ? errors['citizen_name'] : null,
                             ),
                           ),
                           const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _addressController,
-                            onChanged: (_) => setState(() {}),
-                            decoration: _customInputDecoration(
-                              ctx: context,
-                              labelText: context.tr('register.adresse'),
-                              icon: Icons.home_outlined,
-                              errorText: touched['citizen_adress'] == true ? errors['citizen_adress'] : null,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
 
-                          // Commune
+                          // Commune Selection
                           if (selectedCommune == null) ...[
                             TextField(
                               onChanged: (val) => setState(() => query = val),
                               decoration: _customInputDecoration(
-                              ctx: context,
+                                ctx: context,
                                 labelText: context.tr('register.commune'),
                                 hintText: context.tr('register.commune_hint'),
+                                isRequired: true,
                                 icon: Icons.location_city_outlined,
                                 errorText: touched['municipality_id'] == true ? errors['municipality_id'] : null,
                               ),
@@ -573,7 +658,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               Container(
                                 constraints: const BoxConstraints(maxHeight: 160),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
+                                  color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: Colors.grey.shade300),
                                 ),
@@ -587,14 +672,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         .where((c) => (_communeName(c)).toLowerCase().contains(query.toLowerCase()))
                                         .toList();
                                     final c = filteredList[index];
-                                    return InkWell(
-                                      onTap: () => setState(() {
-                                        selectedCommune = c;
-                                        errors.remove('municipality_id');
-                                      }),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        child: Text(_communeName(c), style: const TextStyle(color: Colors.black87)),
+                                    return Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          final cId = c['formatted_id']?.toString() ?? c['id']?.toString() ?? '';
+                                          setState(() {
+                                            selectedCommune = c;
+                                            selectedFokontany = null;
+                                            query = "";
+                                            fokontanyQuery = "";
+                                            errors.remove('municipality_id');
+                                          });
+                                          if (c['fokotanys'] is List && (c['fokotanys'] as List).isNotEmpty) {
+                                            setState(() => communeFokotanys = c['fokotanys']);
+                                          } else if (cId.isNotEmpty) {
+                                            _fetchFokotanysForCommune(cId);
+                                          }
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Text(_communeName(c), style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+                                        ),
                                       ),
                                     );
                                   },
@@ -610,13 +709,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(_communeName(selectedCommune), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  Text(_communeName(selectedCommune), style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                                   IconButton(
                                     icon: const Icon(Icons.close, size: 20),
                                     onPressed: () => setState(() {
                                       selectedCommune = null;
                                       selectedFokontany = null;
                                       query = "";
+                                      fokontanyQuery = "";
+                                      communeFokotanys = [];
                                     }),
                                   ),
                                 ],
@@ -625,45 +726,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                           const SizedBox(height: 16),
 
-                          // Fokontany
+                          // Fokontany Selection
                           if (selectedCommune != null) ...[
                             if (selectedFokontany == null) ...[
                               TextField(
                                 onChanged: (val) => setState(() => fokontanyQuery = val),
-                                decoration: InputDecoration(
+                                decoration: _customInputDecoration(
+                                  ctx: context,
                                   labelText: context.tr('register.fokontany'),
                                   hintText: context.tr('register.fokontany_hint'),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  isRequired: true,
+                                  icon: Icons.map_outlined,
                                   errorText: touched['fokotany_id'] == true ? errors['fokotany_id'] : null,
                                 ),
                               ),
-                              if (selectedCommune['fokotanys'] != null)
+                              if (loadingFokotanys)
+                                const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Center(child: CircularProgressIndicator(color: Color(0xFF16A34A), strokeWidth: 2)),
+                                )
+                              else if (communeFokotanys.isNotEmpty)
                                 Container(
                                   constraints: const BoxConstraints(maxHeight: 160),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
+                                    color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(color: Colors.grey.shade300),
                                   ),
                                   child: ListView.builder(
                                     shrinkWrap: true,
-                                    itemCount: (selectedCommune['fokotanys'] as List)
-                                        .where((f) => (f['name'] ?? '').toLowerCase().contains(fokontanyQuery.toLowerCase()))
+                                    itemCount: communeFokotanys
+                                        .where((f) => (f['name'] ?? f['nom'] ?? '').toString().toLowerCase().contains(fokontanyQuery.toLowerCase()))
                                         .length,
                                     itemBuilder: (context, index) {
-                                      final fokotanysList = (selectedCommune['fokotanys'] as List)
-                                          .where((f) => (f['name'] ?? '').toLowerCase().contains(fokontanyQuery.toLowerCase()))
+                                      final fokList = communeFokotanys
+                                          .where((f) => (f['name'] ?? f['nom'] ?? '').toString().toLowerCase().contains(fokontanyQuery.toLowerCase()))
                                           .toList();
-                                      final f = fokotanysList[index];
-                                      return InkWell(
-                                        onTap: () => setState(() {
-                                          selectedFokontany = f;
-                                          errors.remove('fokotany_id');
-                                          errors.remove('fokotany_formatted_id');
-                                        }),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(10),
-                                          child: Text(f['name'] ?? '', style: const TextStyle(color: Colors.black87)),
+                                      final f = fokList[index];
+                                      final fName = f['name'] ?? f['nom'] ?? '';
+                                      return Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () => setState(() {
+                                            selectedFokontany = f;
+                                            errors.remove('fokotany_id');
+                                            errors.remove('fokotany_formatted_id');
+                                          }),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Text(fName, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+                                          ),
                                         ),
                                       );
                                     },
@@ -679,7 +791,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(selectedFokontany['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    Text(selectedFokontany['name'] ?? selectedFokontany['nom'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                                     IconButton(
                                       icon: const Icon(Icons.close, size: 20),
                                       onPressed: () => setState(() {
@@ -691,9 +803,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                             ],
+                            const SizedBox(height: 16),
                           ],
-                          const SizedBox(height: 16),
 
+                          // CIN Number
                           TextFormField(
                             controller: _cinController,
                             keyboardType: TextInputType.number,
@@ -701,51 +814,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: _customInputDecoration(
                               ctx: context,
                               labelText: context.tr('register.cin'),
+                              isRequired: true,
                               icon: Icons.credit_card_outlined,
                               errorText: touched['citizen_national_card_number'] == true ? errors['citizen_national_card_number'] : null,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          TextFormField(
-                            controller: _cardDateController,
-                            readOnly: true,
-                            onTap: () async {
-                              DateTime? pickedDate = await showDatePicker(
-                                context: context,
-                                initialDate: DateTime.now(),
-                                firstDate: DateTime(1900),
-                                lastDate: DateTime.now(),
-                              );
-                              if (pickedDate != null) {
-                                setState(() {
-                                  _cardDateController.text = pickedDate.toIso8601String().split('T')[0];
-                                });
-                              }
-                            },
-                            decoration: _customInputDecoration(
-                              ctx: context,
-                              labelText: context.tr('register.date_delivrance'),
-                              hintText: context.tr('register.date_hint'),
-                              icon: Icons.calendar_today_outlined,
-                              errorText: touched['citizen_national_card_date'] == true ? errors['citizen_national_card_date'] : null,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          TextFormField(
-                            controller: _cardLocationController,
-                            onChanged: (_) => setState(() {}),
-                            decoration: _customInputDecoration(
-                              ctx: context,
-                              labelText: context.tr('register.lieu_delivrance'),
-                              icon: Icons.location_on_outlined,
-                              errorText: touched['citizen_national_card_location'] == true ? errors['citizen_national_card_location'] : null,
                             ),
                           ),
                         ],
                       );
 
+                      // Right Column: Email (*), Password (*), Confirm Password (*), Fonction (*)
                       Widget rightColumn = Column(
                         children: [
                           TextFormField(
@@ -755,6 +832,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: _customInputDecoration(
                               ctx: context,
                               labelText: context.tr('register.email'),
+                              isRequired: true,
                               icon: Icons.email_outlined,
                               errorText: touched['user_email'] == true ? errors['user_email'] : null,
                             ),
@@ -768,6 +846,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: _customInputDecoration(
                               ctx: context,
                               labelText: context.tr('register.mot_de_passe'),
+                              isRequired: true,
                               icon: Icons.lock_outline,
                               errorText: touched['user_password'] == true ? errors['user_password'] : null,
                               suffixIcon: IconButton(
@@ -785,104 +864,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: _customInputDecoration(
                               ctx: context,
                               labelText: context.tr('register.confirmer_pass'),
+                              isRequired: true,
                               icon: Icons.lock_outline,
                               errorText: touched['confirm_password'] == true ? errors['confirm_password'] : null,
                             ),
                           ),
                           const SizedBox(height: 16),
 
+                          // Fonction (citizen_work) - Required
                           TextFormField(
-                            controller: _pseudoController,
+                            controller: _workController,
                             onChanged: (_) => setState(() {}),
                             decoration: _customInputDecoration(
                               ctx: context,
-                              labelText: context.tr('register.pseudo'),
-                              icon: Icons.account_circle_outlined,
-                              errorText: touched['user_pseudo'] == true ? errors['user_pseudo'] : null,
+                              labelText: context.tr('register.fonction'),
+                              isRequired: true,
+                              icon: Icons.work_outline,
+                              errorText: touched['citizen_work'] == true ? errors['citizen_work'] : null,
                             ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            onChanged: (_) => setState(() {}),
-                            decoration: _customInputDecoration(
-                              ctx: context,
-                              labelText: context.tr('register.telephone'),
-                              icon: Icons.phone_outlined,
-                              errorText: touched['user_phone'] == true ? errors['user_phone'] : null,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Upload Photo
-                          Column(
-                            children: [
-                              if (photoBytes != null)
-                                Stack(
-                                  children: [
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        image: DecorationImage(
-                                          image: MemoryImage(photoBytes!),
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: GestureDetector(
-                                        onTap: () => setState(() {
-                                          citizenPhoto = null;
-                                          photoBytes = null;
-                                        }),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(Icons.close, size: 14, color: Colors.white),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              else
-                                InkWell(
-                                  onTap: _pickImage,
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF9FAFB),
-                                      border: Border.all(color: Colors.grey.shade300),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.add_a_photo_outlined, color: Color(0xFF16A34A), size: 20),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          context.tr('register.photo'),
-                                          style: const TextStyle(color: Color(0xFF374151), fontSize: 14, fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              if (errors['citizen_photo'] != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(errors['citizen_photo']!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-                                ),
-                            ],
                           ),
                         ],
                       );
@@ -907,8 +906,165 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                     },
                   ),
+                  const SizedBox(height: 24),
+
+                  // Optional Fields Section
+                  ExpansionTile(
+                    title: Text(
+                      context.tr('register.photo'),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: titleColor),
+                    ),
+                    childrenPadding: const EdgeInsets.symmetric(vertical: 12),
+                    children: [
+                      TextFormField(
+                        controller: _addressController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: _customInputDecoration(
+                          ctx: context,
+                          labelText: context.tr('register.adresse'),
+                          isRequired: false,
+                          icon: Icons.home_outlined,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _cardDateController,
+                        readOnly: true,
+                        onTap: () async {
+                          DateTime? pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime.now(),
+                          );
+                          if (pickedDate != null) {
+                            setState(() {
+                              _cardDateController.text = pickedDate.toIso8601String().split('T')[0];
+                            });
+                          }
+                        },
+                        decoration: _customInputDecoration(
+                          ctx: context,
+                          labelText: context.tr('register.date_delivrance'),
+                          hintText: context.tr('register.date_hint'),
+                          isRequired: false,
+                          icon: Icons.calendar_today_outlined,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _cardLocationController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: _customInputDecoration(
+                          ctx: context,
+                          labelText: context.tr('register.lieu_delivrance'),
+                          isRequired: false,
+                          icon: Icons.location_on_outlined,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _pseudoController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: _customInputDecoration(
+                          ctx: context,
+                          labelText: context.tr('register.pseudo'),
+                          isRequired: false,
+                          icon: Icons.account_circle_outlined,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        onChanged: (_) => setState(() {}),
+                        decoration: _customInputDecoration(
+                          ctx: context,
+                          labelText: context.tr('register.telephone'),
+                          isRequired: false,
+                          icon: Icons.phone_outlined,
+                          errorText: touched['user_phone'] == true ? errors['user_phone'] : null,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Upload Photo
+                      Column(
+                        children: [
+                          if (photoBytes != null)
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    image: DecorationImage(
+                                      image: MemoryImage(photoBytes!),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: GestureDetector(
+                                    onTap: () => setState(() {
+                                      citizenPhoto = null;
+                                      photoBytes = null;
+                                    }),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            InkWell(
+                              onTap: _pickImage,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF9FAFB),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.add_a_photo_outlined, color: Color(0xFF16A34A), size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      context.tr('register.photo'),
+                                      style: TextStyle(color: isDark ? Colors.white70 : const Color(0xFF374151), fontSize: 14, fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (errors['citizen_photo'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(errors['citizen_photo']!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 32),
 
+                  // Submit Button
                   Container(
                     width: double.infinity,
                     height: 52,
@@ -958,7 +1114,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(context.tr('register.deja_compte'), style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      Text(context.tr('register.deja_compte'), style: TextStyle(color: subtitleColor, fontSize: 14)),
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () => context.go('/auth/login'),

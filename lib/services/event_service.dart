@@ -154,11 +154,18 @@ class EventService {
 
   static Future<dynamic> updateEvent(String id, Map<String, dynamic> eventData) async {
     try {
-      final response = await http.put(
+      http.Response response = await http.patch(
         Uri.parse('$baseUrl/events/$id'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(eventData),
       );
+      if (response.statusCode == 404 || response.statusCode == 405) {
+        response = await http.put(
+          Uri.parse('$baseUrl/events/$id'),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(eventData),
+        );
+      }
       final resData = jsonDecode(response.body);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
